@@ -4,7 +4,7 @@
     {
         // Identifier for the game
         public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public string Title {get; set; } = string.Empty;
         public string? SteamAppId { get; set; }
 
         // Chronology

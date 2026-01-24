@@ -37,7 +37,7 @@ public class ExcelImportService
             var game = new Game
             {
                 Id = Guid.NewGuid(),
-                Name = csv.GetField<string>("Name") ?? "Unknown",
+                Title= csv.GetField<string>("Name") ?? "Unknown",
                 SteamAppId = csv.GetField("AppID"),
                 ReleaseDate = DateTime.TryParse(csv.GetField("Release Date"), out var rDate) ? rDate : null,
                 SteamRating = double.TryParse(csv.GetField("Steam Rating"), out var rating) ? rating : null,
