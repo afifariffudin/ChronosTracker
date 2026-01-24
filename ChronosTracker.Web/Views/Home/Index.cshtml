@@ -1,0 +1,17 @@
+﻿@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to Chronos Tracker</h1>
+    <p>Your Excel Importer is ready.</p>
+
+    <hr />
+
+    <form asp-controller="Games" asp-action="Import" method="post">
+        <button type="submit" class="btn btn-success btn-lg" style="padding: 20px; font-size: 20px;">
+            🚀 Import Games from Excel
+        </button>
+    </form>
+</div>

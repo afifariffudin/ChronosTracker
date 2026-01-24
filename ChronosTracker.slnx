@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ChronosTracker.Core/ChronosTracker.Core.csproj" />
+  <Project Path="ChronosTracker.Infrastructure/ChronosTracker.Infrastructure.csproj" />
+  <Project Path="ChronosTracker.Web/ChronosTracker.Web.csproj" />
+</Solution>
