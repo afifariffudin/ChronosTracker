@@ -1,0 +1,183 @@
+﻿@using ChronosTracker.Infrastructure.Models
+@model List<IGDBGame>
+
+@{
+    ViewData["Title"] = "Global Game Archive";
+    var platforms = ViewBag.Platforms as List<IGDBNestedItem> ?? new List<IGDBNestedItem>();
+    var selectedPlatforms = ViewBag.SelectedPlatforms as List<int> ?? new List<int>();
+    int currentPage = ViewBag.CurrentPage ?? 0;
+}
+
+<div class="container-fluid px-4 mt-4">
+    <div class="row">
+        <div class="col-md-3 col-lg-2">
+            <div class="sticky-top" style="top: 20px; z-index: 1000;">
+                <h4 class="fw-bold mb-3"><i class="bi bi-filter-square"></i> Filters</h4>
+
+                <form asp-action="Browse" method="get" id="filterForm">
+                    <input type="hidden" name="page" value="0" />
+
+                    <div class="card shadow-sm border-0 mb-3">
+                        <div class="card-header bg-dark text-white fw-bold py-2">
+                            Platforms
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                                <input type="text" id="platformSearch" class="form-control border-start-0"
+                                       placeholder="Find console..." onkeyup="filterPlatformList()">
+                            </div>
+
+                            <div id="platformCheckboxContainer" style="max-height: 500px; overflow-y: auto; overflow-x: hidden;" class="px-2">
+                                @foreach (var platform in platforms.OrderBy(p => p.name))
+                                {
+                                    <div class="form-check platform-row mb-1">
+                                        <input class="form-check-input" type="checkbox" name="platformIds"
+                                               value="@platform.id" id="plt_@platform.id"
+                                               @(selectedPlatforms.Contains(platform.id) ? "checked" : "")
+                                               onchange="this.form.submit()">
+                                        <label class="form-check-label small text-truncate" for="plt_@platform.id" style="max-width: 150px;">
+                                            @platform.name
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <a asp-action="Browse" class="btn btn-outline-danger btn-sm w-100">
+                        <i class="bi bi-x-circle"></i> Clear All
+                    </a>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-9 col-lg-10">
+            <div class="d-flex justify-content-between align-items-end mb-4">
+                <div>
+                    <h2 class="display-6 fw-bold mb-0">Global Game Archive</h2>
+                    <p class="text-muted">History of gaming, oldest to newest.</p>
+                </div>
+                <div class="text-muted small">
+                    Showing @Model.Count records
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 bg-white">
+                        <thead class="table-light border-bottom">
+                            <tr class="text-uppercase small fw-bold text-muted">
+                                <th class="text-center" style="width: 100px;">Date</th>
+                                <th class="text-center" style="width: 100px;">Cover</th>
+                                <th style="width: 35%;">Game Details</th>
+                                <th>Consoles</th>
+                                <th>Genres</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var game in Model)
+                            {
+                                <tr>
+                                    <td class="text-center">
+                                        <div class="fw-bold fs-5">@game.ReleaseDate?.ToString("yyyy")</div>
+                                        <div class="small text-muted">@game.ReleaseDate?.ToString("MMM dd")</div>
+                                    </td>
+
+                                    <td class="text-center py-2">
+                                        @if (game.cover != null && !string.IsNullOrEmpty(game.cover.url))
+                                        {
+                                            var imageUrl = "https:" + game.cover.url.Replace("t_thumb", "t_cover_big");
+                                            <img src="@imageUrl" alt="@game.name" class="rounded shadow-sm"
+                                                 style="width: 70px; height: 95px; object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted mx-auto"
+                                                 style="width: 70px; height: 95px; font-size: 0.6rem;">
+                                                NO IMAGE
+                                            </div>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        <div class="fw-bold text-primary fs-5">@game.name</div>
+                                        <div class="text-muted small" style="max-height: 80px; overflow-y: auto; line-height: 1.4;">
+                                            @(string.IsNullOrEmpty(game.summary) ? "No description available." : game.summary)
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        @if (game.platforms != null)
+                                        {
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach (var p in game.platforms)
+                                                {
+                                                    <span class="badge bg-secondary opacity-75" style="font-size: 0.65rem;">@p.name</span>
+                                                }
+                                            </div>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @if (game.genres != null)
+                                        {
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach (var g in game.genres)
+                                                {
+                                                    <span class="badge border border-info text-info" style="font-size: 0.65rem;">@g.name</span>
+                                                }
+                                            </div>
+                                        }
+                                    </td>
+
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-success rounded-pill px-3">
+                                            <i class="bi bi-plus"></i> Add
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <nav class="my-5">
+                <ul class="pagination justify-content-center">
+                    @if (currentPage > 0)
+                    {
+                        <li class="page-item">
+                            <a class="page-link shadow-sm"
+                               href="@Url.Action("Browse", new { page = currentPage - 1, platformIds = selectedPlatforms })">
+                                &laquo; Previous Era
+                            </a>
+                        </li>
+                    }
+                    <li class="page-item ms-3">
+                        <a class="page-link bg-primary text-white shadow-sm"
+                           href="@Url.Action("Browse", new { page = currentPage + 1, platformIds = selectedPlatforms })">
+                            Next Era &raquo;
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Logic: JavaScript filter to search through the checkbox labels without page reload
+        function filterPlatformList() {
+            const searchTerm = document.getElementById('platformSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('.platform-row');
+
+            rows.forEach(row => {
+                const text = row.querySelector('label').innerText.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? "block" : "none";
+            });
+        }
+    </script>
+}

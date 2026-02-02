@@ -13,4 +13,19 @@
             🚀 Import Games from Excel
         </button>
     </form>
+
+    @if (TempData["IGDBStatus"] != null)
+    {
+        <div class="alert alert-info mt-3">
+            @TempData["IGDBStatus"]
+        </div>
+    }
+
+    <div class="mt-5 border-top pt-3">
+        <h3>IGDB API Testing</h3>
+        <form asp-controller="Games" asp-action="TestIGDB" method="post">
+            <button type="submit" class="btn btn-primary">Verify IGDB Connection</button>
+        </form>
+    </div>
+
 </div>

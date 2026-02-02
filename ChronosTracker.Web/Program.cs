@@ -7,6 +7,8 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<ExcelImportService>();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IGDBService>();
 
 var app = builder.Build();
 
