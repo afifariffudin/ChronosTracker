@@ -23,7 +23,17 @@ public class IGDBGame
     [JsonIgnore]
     public string? SteamAppId => external_games?
         .FirstOrDefault(x => x.external_game_source == 1)?
-        .uid;
+        .url;
+
+    [JsonIgnore]
+    public string? GOGId => external_games?
+        .FirstOrDefault(x => x.external_game_source == 5)?
+        .url;
+
+    [JsonIgnore]
+    public string? EpicGamesId => external_games?
+        .FirstOrDefault(x => x.external_game_source == 26)?
+        .url;
 
     public DateTime? ReleaseDate => first_release_date.HasValue
         ? DateTimeOffset.FromUnixTimeSeconds(first_release_date.Value).DateTime
@@ -38,6 +48,9 @@ public class IGDBExternalGame
 
     [JsonProperty("uid")]
     public string? uid { get; set; }
+
+    [JsonProperty("url")]
+    public string? url { get; set; }
 }
 
 public class IGDBNestedItem

@@ -50,7 +50,7 @@ public class IGDBService
                            "platforms.name, genres.name, " +
                            "involved_companies.developer, involved_companies.company.name, " +
                            "collection.name, franchises.name, parent_game.name, " +
-                           "external_games.external_game_source, external_games.uid;";
+                           "external_games.external_game_source, external_games.uid, external_games.url;";
 
         string whereClause = BuildWhereClause(platformIds, searchTerm, minDate);
 

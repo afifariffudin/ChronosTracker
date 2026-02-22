@@ -224,16 +224,16 @@
                     <table class="table table-hover align-middle mb-0 table-archive">
                         <thead>
                             <tr class="small">
-                                <th class="col-date ps-3 text-center">RELEASE</th>
-                                <th class="text-center">COVER</th>
-                                <th class="col-details">GAME DETAILS</th>
-                                <th>PLATFORMS</th>
-                                <th>DEVELOPER</th>
-                                <th>GENRES</th>
-                                <th>SERIES</th>
-                                <th>SPIN-OFF OF</th>
-                                <th>FRANCHISE</th>
-                                <th class="text-center sticky-action px-3" style="width:120px;">ACTION</th>
+                                <th class="col-date ps-3 text-center align-middle">RELEASE</th>
+                                <th class="text-center align-middle">COVER</th>
+                                <th class="col-details text-center align-middle">GAME DETAILS</th>
+                                <th class="text-center align-middle">PARENT GAME</th>
+                                <th class="text-center align-middle">SERIES</th>
+                                <th class="text-center align-middle">FRANCHISE</th>
+                                <th class="text-center align-middle">DEVELOPER</th>
+                                <th class="text-center align-middle">GENRES</th>
+                                <th class="text-center align-middle">PLATFORMS</th>
+                                <th class="text-center align-middle sticky-action px-3" style="width:120px;">ACTION</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -244,46 +244,119 @@
                                 var cover = !string.IsNullOrEmpty(game.cover?.url) ? "https:" + game.cover.url.Replace("t_thumb", "t_cover_big") : "";
 
                                 <tr id="row_@game.id" class="@(s == 2 ? "d-none is-hidden-row" : "")" style="@(s == 2 ? "opacity: 0.3;" : "")">
+                                    @* RELEASE *@
                                     <td class="text-center text-nowrap fw-bold px-3">@game.ReleaseDate?.ToString("dd-MMM-yyyy")</td>
+                                    @* COVER *@
                                     <td class="text-center">
                                         @if (!string.IsNullOrEmpty(cover))
                                         {
                                             <img src="@cover" class="game-cover" />
                                         }
                                     </td>
+                                    @* GAME DETAILS *@
                                     <td>
-    <div class="d-flex align-items-center mb-1">
-        <a href="@game.url" target="_blank" class="fw-bold text-light text-decoration-none hover-purple me-2">@game.name</a>
+                                        <div class="d-flex justify-content-between align-items-start w-100 mb-2">
+                                            <a href="@game.url" target="_blank" class="fw-bold text-light text-decoration-none hover-purple fs-5">
+                                                @game.name
+                                            </a>
 
-        @* STEAM ICON: We check the SteamAppId helper from the model *@
-        @{
-            var steamId = game.SteamAppId; // This calls your helper logic in IGDBGame.cs
-        }
-
-        @if (!string.IsNullOrEmpty(steamId))
-        {
-            <a href="https://store.steampowered.com/app/@steamId" 
-               target="_blank" 
-               class="text-info opacity-75" 
-               title="View on Steam">
-                <i class="bi bi-steam" style="font-size: 1.1rem;"></i>
-            </a>
-        }
-    </div>
-    <div class="game-summary-scroll">@game.summary</div>
-</td>
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            @if (game.platforms != null)
-                                            {
-                                                @foreach (var pl in game.platforms)
+                                            <div class="d-flex gap-2 ms-3 flex-shrink-0">
+                                                @* STEAM *@
+                                                @if (!string.IsNullOrEmpty(game.SteamAppId))
                                                 {
-                                                    <span class="badge badge-platform" style="font-size:0.65rem;">@pl.name</span>
+                                                    <a href="@game.SteamAppId" target="_blank" class="text-info opacity-75" title="View on Steam">
+                                                        <i class="fa-brands fa-steam" style="font-size: 1.2rem;"></i>
+                                                    </a>
                                                 }
-                                            }
+
+                                                @* GOG *@
+                                                @if (!string.IsNullOrEmpty(game.GOGId))
+                                                {
+                                                    <a href="@game.GOGId" target="_blank" style="color: #b245ff;" class="opacity-75" title="View on GOG">
+                                                        <i class="fa-solid fa-g" style="font-size: 1.1rem;filter: drop-shadow(0 0 2px #b245ff);"></i>
+                                                    </a>
+                                                }
+
+                                                @* EPIC GAMES *@
+                                                @if (!string.IsNullOrEmpty(game.EpicGamesId))
+                                                {
+                                                    <a href="@game.EpicGamesId" target="_blank" style="color: #ffffff;" class="opacity-75" title="View on Epic Games Store">
+                                                        <i class="fa-solid fa-e" style="font-size: 1.1rem;border: 1px solid white; padding: 1px 4px; border-radius: 4px; line-height: 1;"></i>
+                                                    </a>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="w-100">
+                                            <div class="game-summary-scroll text-muted border-top border-secondary pt-1" style="display: block; width: 100%; ">
+                                                @if (string.IsNullOrWhiteSpace(game.summary))
+                                                {
+                                                    <span class="fst-italic opacity-50">No description available.</span>
+                                                }
+                                                else
+                                                {
+                                                    @game.summary
+                                                }
+
+                                            </div>
                                         </div>
                                     </td>
+
+                                    @* PARENT GAME *@
+                                    <td class="small text-muted">
+                                    @if (game.parent_game != null)
+                                    {
+                                        <a href="@Url.Action("Browse", new { searchTerm = game.parent_game.name })"
+                                           class="text-muted text-decoration-none hover-purple">
+                                            @game.parent_game.name
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                    </td>
+
+                                    @* SERIES *@
+                                    <td class="small text-muted">
+                                    @if (game.collection != null)
+                                    {
+                                        <a href="@Url.Action("Browse", new { searchTerm = game.collection.name })"
+                                               class="text-muted text-decoration-none hover-purple">
+                                            @game.collection.name
+                                        </a>
+                                    }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+
+                                    </td>
+
+                                    @* FRANCHISE *@
+                                    <td class="small text-muted">
+                                    @if (game.franchises != null && game.franchises.Any())
+                                    {
+                                        <div class="d-flex flex-column gap-1">
+                                            @foreach (var f in game.franchises)
+                                            {
+                                                <a href="@Url.Action("Browse", new { searchTerm = f.name })"
+                                                       class="text-muted text-decoration-none hover-purple">
+                                                    @f.name
+                                                </a>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                    </td>
+
+                                    @* DEVELOPER *@
                                     <td class="small text-muted">@(game.involved_companies != null ? string.Join(", ", game.involved_companies.Where(c => c.developer).Select(c => c.company.name)) : "-")</td>
+                                    
+                                    @* GENRES *@
                                     <td>
                                         <div class="d-flex flex-wrap gap-1">
                                             @if (game.genres != null)
@@ -295,9 +368,21 @@
                                             }
                                         </div>
                                     </td>
-                                    <td class="small fw-bold text-info opacity-75">@(game.collection?.name ?? "-")</td>
-                                    <td class="fst-italic text-muted small">@(game.parent_game?.name ?? "-")</td>
-                                    <td class="small text-muted">@(game.franchises != null ? string.Join(", ", game.franchises.Select(f => f.name)) : "-")</td>
+
+                                    @* PLATFORMS *@
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @if (game.platforms != null)
+                                            {
+                                                @foreach (var pl in game.platforms)
+                                                {
+                                                    <span class="badge badge-platform" style="font-size:0.65rem;">@pl.name</span>
+                                                }
+                                            }
+                                        </div>
+                                    </td>
+
+                                    @* ACTION *@
                                     <td class="text-center sticky-action px-3">
                                         <div id="actions_@game.id" class="btn-group btn-group-sm">
                                             @if (s == 2)
