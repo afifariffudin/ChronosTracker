@@ -1,32 +1,41 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - ChronosTracker</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/ChronosTracker.Web.styles.css" asp-append-version="true" />
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-controller="Home" asp-action="Index">ChronosTracker</a>
-
+        <nav class="navbar navbar-expand-sm navbar-dark border-bottom border-secondary box-shadow mb-3"
+             style="background-color: #1a1a1a !important;">
+            <div class="container-fluid px-4">
+                <a class="navbar-brand fw-bold" asp-area="" asp-controller="Home" asp-action="Index">
+                    <span style="color: var(--accent-purple, #bb86fc)">Chronos</span>Tracker
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link text-light" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Games" asp-action="Index">My Library</a>
+                            <a class="nav-link text-light" asp-controller="Games" asp-action="Index">My Library</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Games" asp-action="Browse">Browse</a>
-                        </li
+                            <a class="nav-link text-light" asp-controller="Games" asp-action="Browse">Browse Archive</a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Games" asp-action="HardwareProfile">
-                                <i class="bi bi-gear"></i> Setup Hardware
+                            <a class="nav-link text-muted" asp-controller="Games" asp-action="HardwareProfile">
+                                <i class="bi bi-gear-fill"></i> Setup Hardware
                             </a>
                         </li>
                     </ul>
@@ -35,22 +44,21 @@
         </nav>
     </header>
 
-    <div class="container">
+    <div class="container-fluid px-4">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container text-center">
-            &copy; 2026 - ChronosTracker
+    <footer class="border-top footer text-muted mt-5">
+        <div class="container-fluid px-4 text-center">
+            &copy; 2026 - ChronosTracker - Full Screen Mode Active
         </div>
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

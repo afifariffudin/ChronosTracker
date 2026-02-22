@@ -8,6 +8,9 @@
         public string Title {get; set; } = string.Empty;
         public string? SteamAppId { get; set; }
         public string? CoverUrl { get; set; }
+        public string? SteamStoreUrl => !string.IsNullOrEmpty(SteamAppId)
+            ? $"https://store.steampowered.com/app/{SteamAppId}"
+            : null;
 
         // Chronology
         public DateTime? ReleaseDate { get; set; }

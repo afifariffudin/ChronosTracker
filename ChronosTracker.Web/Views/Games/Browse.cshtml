@@ -3,142 +3,318 @@
 
 @{
     ViewData["Title"] = "Global Game Archive";
-    // Retrieve metadata for filters and pagination
     var platforms = ViewBag.Platforms as List<IGDBNestedItem> ?? new List<IGDBNestedItem>();
     var selectedPlatforms = ViewBag.SelectedPlatforms as List<int> ?? new List<int>();
+    var localStatuses = ViewBag.LocalStatuses as Dictionary<int, int> ?? new Dictionary<int, int>();
     int currentPage = ViewBag.CurrentPage ?? 0;
+    string searchTerm = ViewBag.SearchTerm;
+    int totalPages = ViewBag.TotalPages ?? 0;
+
+    // Era Pagination Variables
+    long? minDate = ViewBag.MinDate;
+    long? lastTimestamp = ViewBag.LastTimestamp;
 }
 
-<div class="container-fluid px-4 mt-4">
-    <div class="row">
-        <div class="col-md-3 col-lg-2">
-            <div class="sticky-top" style="top: 20px; z-index: 1000;">
-                <h4 class="fw-bold mb-3"><i class="bi bi-filter-square"></i> Filters</h4>
+<style>
+    :root {
+        --bg-deep: #0f0f0f;
+        --surface-card: #1a1a1a;
+        --accent-purple: #bb86fc;
+        --accent-teal: #03dac6;
+        --border-soft: #2c2c2c;
+        --text-muted: #a0a0a0;
+    }
 
-                <form asp-action="Browse" method="get" id="filterForm">
-                    <input type="hidden" name="page" value="0" />
+    body {
+        background-color: var(--bg-deep);
+        color: #e0e0e0;
+        overflow: hidden;
+    }
 
-                    <div class="card shadow-sm border-0 mb-3">
-                        <div class="card-header bg-dark text-white fw-bold py-2">Platforms</div>
-                        <div class="card-body p-2">
-                            <div class="input-group input-group-sm mb-2">
-                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
-                                <input type="text" id="platformSearch" class="form-control border-start-0"
-                                       placeholder="Find console..." onkeyup="filterPlatformList()">
-                            </div>
+    .table-responsive {
+        height: 85vh;
+        overflow: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-soft) transparent;
+    }
 
-                            <div id="platformCheckboxContainer" style="max-height: 500px; overflow-y: auto; overflow-x: hidden;" class="px-2">
-                                @foreach (var platform in platforms.OrderBy(p => p.name))
-                                {
-                                    <div class="form-check platform-row mb-1">
-                                        <input class="form-check-input" type="checkbox" name="platformIds"
-                                               value="@platform.id" id="plt_@platform.id"
-                                               @(selectedPlatforms.Contains(platform.id) ? "checked" : "")
-                                               onchange="this.form.submit()">
-                                        <label class="form-check-label small text-truncate" for="plt_@platform.id" style="max-width: 150px;">
-                                            @platform.name
-                                        </label>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </div>
+    /* 1. Sticky Header */
+    .table-archive thead th {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background-color: #252525 !important;
+        border-bottom: 2px solid var(--border-soft);
+        color: var(--accent-purple);
+        font-weight: 600;
+        text-transform: uppercase;
+    }
 
-                    <a asp-action="Browse" class="btn btn-outline-danger btn-sm w-100">
-                        <i class="bi bi-x-circle"></i> Clear All
+    thead th.sticky-action {
+        z-index: 30;
+        top: 0;
+        right: 0;
+        background-color: #252525 !important;
+    }
+
+    /* 2. Sticky Action Column */
+    .sticky-action {
+        position: sticky;
+        right: 0;
+        background-color: #1a1a1a !important;
+        z-index: 10;
+        border-left: 1px solid var(--border-soft);
+    }
+
+    /* 3. Table Styling */
+    .table-archive {
+        font-size: 0.85rem;
+        background-color: transparent !important;
+    }
+
+        .table-archive tbody tr {
+            border-bottom: 1px solid var(--border-soft);
+            transition: 0.2s;
+        }
+
+            .table-archive tbody tr:hover {
+                background-color: #242424 !important;
+            }
+
+    .game-summary-scroll {
+        max-height: 85px;
+        overflow-y: auto;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        padding-right: 10px;
+        color: var(--text-muted);
+    }
+
+    .game-cover {
+        width: 55px;
+        height: 75px;
+        object-fit: cover;
+        border-radius: 6px;
+        border: 1px solid var(--border-soft);
+    }
+
+    .badge-platform {
+        background: rgba(187, 134, 252, 0.1);
+        color: var(--accent-purple);
+        border: 1px solid rgba(187, 134, 252, 0.3);
+    }
+
+    .badge-genre {
+        background: rgba(3, 218, 198, 0.1);
+        color: var(--accent-teal);
+        border: 1px solid rgba(3, 218, 198, 0.3);
+    }
+
+    #sidebarCollapse {
+        transition: all 0.3s ease;
+        background: var(--surface-card);
+        border-right: 1px solid var(--border-soft);
+    }
+
+    .page-indicator {
+        min-width: 90px;
+        text-align: center;
+        border-left: 1px solid var(--border-soft);
+        border-right: 1px solid var(--border-soft);
+    }
+
+    /* Steam Link Interaction */
+    .hover-purple:hover {
+        color: var(--accent-purple) !important;
+    }
+</style>
+
+<div class="container-fluid px-4 mt-2">
+    <div class="d-flex justify-content-between align-items-center mb-3 bg-dark p-2 rounded border border-secondary shadow-sm">
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-sm btn-outline-light" type="button" id="sidebarToggleBtn" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse">
+                <i class="bi bi-layout-sidebar-inset"></i>
+            </button>
+
+            <div class="btn-group btn-group-sm ms-2">
+                @if (currentPage > 0 || minDate != null)
+                {
+                    <a class="btn btn-outline-secondary" title="Reset to Beginning"
+                       href="@Url.Action("Browse", new { page = 0, platformIds = selectedPlatforms, searchTerm = searchTerm })">
+                        <i class="bi bi-arrow-counterclockwise"></i>
                     </a>
-                </form>
+
+                    <a class="btn btn-outline-secondary"
+                       href="@Url.Action("Browse", new { page = currentPage - 1, platformIds = selectedPlatforms, searchTerm = searchTerm, minDate = minDate })">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                }
+
+                <span class="btn btn-dark border-secondary px-3 fw-bold text-purple page-indicator" style="color:var(--accent-purple)">
+                    PAGE @(currentPage + 1)
+                </span>
+
+                @if (Model.Count == 50)
+                {
+                    if (currentPage < 99)
+                    {
+                        <a class="btn btn-outline-secondary"
+                           href="@Url.Action("Browse", new { page = currentPage + 1, platformIds = selectedPlatforms, searchTerm = searchTerm, minDate = minDate })">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="btn btn-primary fw-bold" title="Next 5,000 Games"
+                           href="@Url.Action("Browse", new { page = 0, platformIds = selectedPlatforms, searchTerm = searchTerm, minDate = lastTimestamp })">
+                            Next Era <i class="bi bi-fast-forward-fill ms-1"></i>
+                        </a>
+                    }
+                }
+            </div>
+
+            <form asp-action="Browse" method="get" class="ms-3">
+                @foreach (var id in selectedPlatforms)
+                {
+                    <input type="hidden" name="platformIds" value="@id" />
+                }
+                <div class="input-group input-group-sm" style="width: 300px;">
+                    <input type="text" name="searchTerm" class="form-control bg-transparent border-secondary text-light"
+                           placeholder="Quick search..." value="@searchTerm">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
+                </div>
+            </form>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+            <div class="form-check form-switch pt-1">
+                <input class="form-check-input" type="checkbox" id="showHiddenToggle" onchange="toggleHiddenRows()">
+                <label class="form-check-label small fw-bold text-danger mb-0" for="showHiddenToggle">Show Hidden</label>
+            </div>
+            <h5 class="mb-0 fw-bold border-start border-secondary ps-3 ms-2 text-uppercase">Global Archive</h5>
+        </div>
+    </div>
+
+    <div class="row g-0">
+        <div class="collapse collapse-horizontal col-md-3 col-lg-2" id="sidebarCollapse">
+            <div class="p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="small fw-bold text-muted text-uppercase">Platforms</span>
+                    <a asp-action="HardwareProfile" class="text-muted"><i class="bi bi-gear-fill"></i></a>
+                </div>
+                <input type="text" id="platformSearch" class="form-control form-control-sm bg-dark border-secondary text-light mb-3"
+                       placeholder="Filter platforms..." onkeyup="filterPlatformList()">
+
+                <div id="platformCheckboxContainer" style="max-height: 65vh; overflow-y: auto;" class="pe-2">
+                    @foreach (var p in platforms.OrderBy(x => x.name))
+                    {
+                        <div class="form-check platform-row mb-2">
+                            <input class="form-check-input" type="checkbox" name="platformIds" value="@p.id" id="plt_@p.id"
+                                   @(selectedPlatforms.Contains(p.id) ? "checked" : "") onchange="this.form.submit()">
+                            <label class="form-check-label small text-muted" for="plt_@p.id">@p.name</label>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
 
-        <div class="col-md-9 col-lg-10">
-            <div class="d-flex justify-content-between align-items-end mb-4">
-                <div>
-                    <h2 class="display-6 fw-bold mb-0">Global Game Archive</h2>
-                    <p class="text-muted">Exploring the timeline of gaming history.</p>
-                </div>
-                <div class="text-muted small">
-                    Showing @Model.Count entries
-                </div>
-            </div>
-
-            <div class="card shadow-sm border-0">
+        <div class="col px-3">
+            <div class="card shadow-lg border-0 overflow-hidden" style="background:transparent">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0 bg-white">
-                        <thead class="table-light border-bottom">
-                            <tr class="text-uppercase small fw-bold text-muted">
-                                <th class="text-center" style="width: 100px;">Release Date</th>
-                                <th class="text-center" style="width: 120px;">Cover</th>
-                                <th style="width: 35%;">Game Details</th>
-                                <th>Consoles</th>
-                                <th>Genres</th>
-                                <th class="text-center">Action</th>
+                    <table class="table table-hover align-middle mb-0 table-archive">
+                        <thead>
+                            <tr class="small">
+                                <th class="col-date ps-3 text-center">RELEASE</th>
+                                <th class="text-center">COVER</th>
+                                <th class="col-details">GAME DETAILS</th>
+                                <th>PLATFORMS</th>
+                                <th>DEVELOPER</th>
+                                <th>GENRES</th>
+                                <th>SERIES</th>
+                                <th>SPIN-OFF OF</th>
+                                <th>FRANCHISE</th>
+                                <th class="text-center sticky-action px-3" style="width:120px;">ACTION</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var game in Model)
                             {
-                                <tr>
+                                int s = localStatuses.GetValueOrDefault(game.id, 0);
+                                var escaped = (game.name ?? string.Empty).Replace("'", "\'");
+                                var cover = !string.IsNullOrEmpty(game.cover?.url) ? "https:" + game.cover.url.Replace("t_thumb", "t_cover_big") : "";
+
+                                <tr id="row_@game.id" class="@(s == 2 ? "d-none is-hidden-row" : "")" style="@(s == 2 ? "opacity: 0.3;" : "")">
+                                    <td class="text-center text-nowrap fw-bold px-3">@game.ReleaseDate?.ToString("dd-MMM-yyyy")</td>
                                     <td class="text-center">
-                                        <div class="fw-bold fs-5">@game.ReleaseDate?.ToString("yyyy")</div>
-                                        <div class="small text-muted">@game.ReleaseDate?.ToString("MMM dd")</div>
-                                    </td>
-
-                                    <td class="text-center py-2">
-                                        @if (game.cover != null && !string.IsNullOrEmpty(game.cover.url))
+                                        @if (!string.IsNullOrEmpty(cover))
                                         {
-                                            var imageUrl = "https:" + game.cover.url.Replace("t_thumb", "t_cover_big");
-                                            <img src="@imageUrl" alt="@game.name" class="rounded shadow-sm"
-                                                 style="width: 70px; height: 95px; object-fit: cover;" />
-                                        }
-                                        else
-                                        {
-                                            <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted mx-auto"
-                                                 style="width: 70px; height: 95px; font-size: 0.6rem;">
-                                                NO IMAGE
-                                            </div>
+                                            <img src="@cover" class="game-cover" />
                                         }
                                     </td>
-
                                     <td>
-                                        <a href="@game.url" target="_blank" class="text-decoration-none">
-                                            <div class="fw-bold text-primary fs-5 mb-1">
-                                                @game.name <i class="bi bi-box-arrow-up-right small" style="font-size: 0.7rem;"></i>
-                                            </div>
-                                        </a>
-                                        <div class="text-muted small pe-2" style="max-height: 80px; overflow-y: auto; border-left: 2px solid #dee2e6; padding-left: 10px;">
-                                            @(string.IsNullOrEmpty(game.summary) ? "No description available." : game.summary)
+    <div class="d-flex align-items-center mb-1">
+        <a href="@game.url" target="_blank" class="fw-bold text-light text-decoration-none hover-purple me-2">@game.name</a>
+
+        @* STEAM ICON: We check the SteamAppId helper from the model *@
+        @{
+            var steamId = game.SteamAppId; // This calls your helper logic in IGDBGame.cs
+        }
+
+        @if (!string.IsNullOrEmpty(steamId))
+        {
+            <a href="https://store.steampowered.com/app/@steamId" 
+               target="_blank" 
+               class="text-info opacity-75" 
+               title="View on Steam">
+                <i class="bi bi-steam" style="font-size: 1.1rem;"></i>
+            </a>
+        }
+    </div>
+    <div class="game-summary-scroll">@game.summary</div>
+</td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @if (game.platforms != null)
+                                            {
+                                                @foreach (var pl in game.platforms)
+                                                {
+                                                    <span class="badge badge-platform" style="font-size:0.65rem;">@pl.name</span>
+                                                }
+                                            }
                                         </div>
                                     </td>
-
+                                    <td class="small text-muted">@(game.involved_companies != null ? string.Join(", ", game.involved_companies.Where(c => c.developer).Select(c => c.company.name)) : "-")</td>
                                     <td>
-                                        @if (game.platforms != null)
-                                        {
-                                            <div class="d-flex flex-wrap gap-1">
-                                                @foreach (var p in game.platforms)
-                                                {
-                                                    <span class="badge bg-secondary opacity-75" style="font-size: 0.65rem;">@p.name</span>
-                                                }
-                                            </div>
-                                        }
-                                    </td>
-
-                                    <td>
-                                        @if (game.genres != null)
-                                        {
-                                            <div class="d-flex flex-wrap gap-1">
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @if (game.genres != null)
+                                            {
                                                 @foreach (var g in game.genres)
                                                 {
-                                                    <span class="badge border border-info text-info" style="font-size: 0.65rem;">@g.name</span>
+                                                    <span class="badge badge-genre" style="font-size:0.65rem;">@g.name</span>
                                                 }
-                                            </div>
-                                        }
+                                            }
+                                        </div>
                                     </td>
-
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-success rounded-pill px-3">
-                                            <i class="bi bi-plus"></i> Add
-                                        </button>
+                                    <td class="small fw-bold text-info opacity-75">@(game.collection?.name ?? "-")</td>
+                                    <td class="fst-italic text-muted small">@(game.parent_game?.name ?? "-")</td>
+                                    <td class="small text-muted">@(game.franchises != null ? string.Join(", ", game.franchises.Select(f => f.name)) : "-")</td>
+                                    <td class="text-center sticky-action px-3">
+                                        <div id="actions_@game.id" class="btn-group btn-group-sm">
+                                            @if (s == 2)
+                                            {
+                                                <button class="btn btn-warning" onclick="updateStatus(@game.id, '@escaped', '@cover', '@game.ReleaseDate', 0)"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn @(s == 1 ? "btn-success" : "btn-outline-success")" style="@(s == 1 ? "" : "color:var(--accent-teal); border-color:var(--accent-teal)")"
+                                                        onclick="updateStatus(@game.id, '@escaped', '@cover', '@game.ReleaseDate', 1)">
+                                                    <i class="bi @(s == 1 ? "bi-check-circle-fill" : "bi-plus-circle")"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" onclick="updateStatus(@game.id, '@escaped', '@cover', '@game.ReleaseDate', 2)">
+                                                    <i class="bi bi-eye-slash"></i>
+                                                </button>
+                                            }
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -146,41 +322,33 @@
                     </table>
                 </div>
             </div>
-
-            <nav class="my-5">
-                <ul class="pagination justify-content-center">
-                    @if (currentPage > 0)
-                    {
-                        <li class="page-item">
-                            <a class="page-link shadow-sm"
-                               href="@Url.Action("Browse", new { page = currentPage - 1, platformIds = selectedPlatforms })">
-                                &laquo; Previous Era
-                            </a>
-                        </li>
-                    }
-                    <li class="page-item ms-3">
-                        <a class="page-link bg-primary text-white shadow-sm"
-                           href="@Url.Action("Browse", new { page = currentPage + 1, platformIds = selectedPlatforms })">
-                            Next Era &raquo;
-                        </a>
-                    </li>
-                </ul>
-            </nav>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script>
-        // Sidebar platform search logic
-        function filterPlatformList() {
-            const searchTerm = document.getElementById('platformSearch').value.toLowerCase();
-            const rows = document.querySelectorAll('.platform-row');
+        document.addEventListener("DOMContentLoaded", function () {
+            const sidebar = document.getElementById('sidebarCollapse');
+            const sidebarState = localStorage.getItem('sidebarState');
+            if (sidebarState === 'open') { sidebar.classList.add('show'); }
+            else { sidebar.classList.remove('show'); }
+            sidebar.addEventListener('shown.bs.collapse', () => localStorage.setItem('sidebarState', 'open'));
+            sidebar.addEventListener('hidden.bs.collapse', () => localStorage.setItem('sidebarState', 'closed'));
+        });
 
-            rows.forEach(row => {
-                const text = row.querySelector('label').innerText.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? "block" : "none";
+        function updateStatus(id, title, cover, date, status) {
+            $.post('/Games/UpdateStatus', { igdbId: id, title: title, coverUrl: cover, releaseDate: date, status: status }, function (res) {
+                if (res.success) { location.reload(); }
             });
+        }
+        function toggleHiddenRows() {
+            const show = $('#showHiddenToggle').is(':checked');
+            $('.is-hidden-row').each(function () { if (show) $(this).removeClass('d-none'); else $(this).addClass('d-none'); });
+        }
+        function filterPlatformList() {
+            const term = $('#platformSearch').val().toLowerCase();
+            $('.platform-row').each(function () { $(this).toggle($(this).text().toLowerCase().includes(term)); });
         }
     </script>
 }

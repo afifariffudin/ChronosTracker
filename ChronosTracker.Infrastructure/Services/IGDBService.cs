@@ -1,6 +1,7 @@
 ﻿using ChronosTracker.Infrastructure.Models;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using System.Text;
 
 namespace ChronosTracker.Infrastructure.Services;
 
@@ -22,19 +23,19 @@ public class IGDBService
 
         var clientId = _config["IGDB:ClientId"];
         var clientSecret = _config["IGDB:ClientSecret"];
-
         var url = $"https://id.twitch.tv/oauth2/token?client_id={clientId}&client_secret={clientSecret}&grant_type=client_credentials";
 
+        // Must be POST for Twitch Auth
         var response = await _httpClient.PostAsync(url, null);
         var content = await response.Content.ReadAsStringAsync();
 
         var tokenData = JsonConvert.DeserializeObject<TwitchToken>(content);
-        _accessToken = tokenData.access_token;
+        _accessToken = tokenData?.access_token;
 
         return _accessToken;
     }
 
-    public async Task<List<IGDBGame>> GetBrowseGamesAsync(int offset = 0, List<int> platformIds = null)
+    public async Task<List<IGDBGame>> GetBrowseGamesAsync(int offset = 0, List<int> platformIds = null, string searchTerm = null, long? minDate = null)
     {
         var token = await GetAccessTokenAsync();
         var clientId = _config["IGDB:ClientId"];
@@ -43,25 +44,63 @@ public class IGDBService
         _httpClient.DefaultRequestHeaders.Add("Client-ID", clientId);
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
 
-        string platformFilter = "";
-        if (platformIds != null && platformIds.Any())
-        {
-            var ids = string.Join(",", platformIds);
-            platformFilter = $"& platforms = ({ids})";
-        }
+        // FIX: We now explicitly expand 'external_games' to get both the Source ID and the UID.
+        // Dot notation (external_games.uid) is required to get the data instead of just a numeric ID.
+        string fieldList = "fields name, url, summary, first_release_date, cover.url, " +
+                           "platforms.name, genres.name, " +
+                           "involved_companies.developer, involved_companies.company.name, " +
+                           "collection.name, franchises.name, parent_game.name, " +
+                           "external_games.external_game_source, external_games.uid;";
 
-        var body = $"fields name, url, first_release_date, summary, platforms.name, genres.name, cover.url; " +
-            $"where first_release_date >0 {platformFilter}; " +
-            $"sort first_release_date asc; " +
-            $"limit 50; " +
-            $"offset {offset};";
+        string whereClause = BuildWhereClause(platformIds, searchTerm, minDate);
 
-        var content = new StringContent(body, System.Text.Encoding.UTF8, "text/plain");
+        string body = $"{fieldList} {whereClause}; sort first_release_date asc; limit 50; offset {offset};";
+
+        var content = new StringContent(body, Encoding.UTF8, "text/plain");
         var response = await _httpClient.PostAsync("https://api.igdb.com/v4/games", content);
         var jsonResponse = await response.Content.ReadAsStringAsync();
 
-        return JsonConvert.DeserializeObject<List<IGDBGame>>(jsonResponse) ?? new List<IGDBGame>();
+        System.Diagnostics.Debug.WriteLine($"IGDB Response: {jsonResponse}");
 
+        return JsonConvert.DeserializeObject<List<IGDBGame>>(jsonResponse) ?? new List<IGDBGame>();
+    }
+
+    public async Task<int> GetGamesCountAsync(List<int> platformIds = null, string searchTerm = null, long? minDate = null)
+    {
+        var token = await GetAccessTokenAsync();
+        var clientId = _config["IGDB:ClientId"];
+
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Add("Client-ID", clientId);
+        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+        string whereClause = BuildWhereClause(platformIds, searchTerm, minDate);
+        string body = $"{whereClause};";
+
+        var content = new StringContent(body, Encoding.UTF8, "text/plain");
+        var response = await _httpClient.PostAsync("https://api.igdb.com/v4/games/count", content);
+        var jsonResponse = await response.Content.ReadAsStringAsync();
+
+        var result = JsonConvert.DeserializeObject<IGDBCountResponse>(jsonResponse);
+        return result?.count ?? 0;
+    }
+
+    private string BuildWhereClause(List<int> platformIds, string searchTerm, long? minDate = null)
+    {
+        long startTimestamp = minDate ?? 0;
+        string where = $"where first_release_date > {startTimestamp}";
+
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            where += $" & name ~ *\"{searchTerm}\"*";
+        }
+
+        if (platformIds != null && platformIds.Any())
+        {
+            where += $" & platforms = ({string.Join(",", platformIds)})";
+        }
+
+        return where;
     }
 
     public async Task<List<IGDBNestedItem>> GetPlatformsAsync()
@@ -73,9 +112,9 @@ public class IGDBService
         _httpClient.DefaultRequestHeaders.Add("Client-ID", clientId);
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
 
-        var body = $"fields name; sort name asc; limit 500;";
-        var content = new StringContent(body, System.Text.Encoding.UTF8, "text/plain");
+        var body = "fields name; sort name asc; limit 500;";
 
+        var content = new StringContent(body, Encoding.UTF8, "text/plain");
         var response = await _httpClient.PostAsync("https://api.igdb.com/v4/platforms", content);
         var jsonResponse = await response.Content.ReadAsStringAsync();
 
