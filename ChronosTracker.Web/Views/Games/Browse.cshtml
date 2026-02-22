@@ -3,6 +3,7 @@
 
 @{
     ViewData["Title"] = "Global Game Archive";
+    // Retrieve metadata for filters and pagination
     var platforms = ViewBag.Platforms as List<IGDBNestedItem> ?? new List<IGDBNestedItem>();
     var selectedPlatforms = ViewBag.SelectedPlatforms as List<int> ?? new List<int>();
     int currentPage = ViewBag.CurrentPage ?? 0;
@@ -18,9 +19,7 @@
                     <input type="hidden" name="page" value="0" />
 
                     <div class="card shadow-sm border-0 mb-3">
-                        <div class="card-header bg-dark text-white fw-bold py-2">
-                            Platforms
-                        </div>
+                        <div class="card-header bg-dark text-white fw-bold py-2">Platforms</div>
                         <div class="card-body p-2">
                             <div class="input-group input-group-sm mb-2">
                                 <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
@@ -56,10 +55,10 @@
             <div class="d-flex justify-content-between align-items-end mb-4">
                 <div>
                     <h2 class="display-6 fw-bold mb-0">Global Game Archive</h2>
-                    <p class="text-muted">History of gaming, oldest to newest.</p>
+                    <p class="text-muted">Exploring the timeline of gaming history.</p>
                 </div>
                 <div class="text-muted small">
-                    Showing @Model.Count records
+                    Showing @Model.Count entries
                 </div>
             </div>
 
@@ -68,8 +67,8 @@
                     <table class="table table-hover align-middle mb-0 bg-white">
                         <thead class="table-light border-bottom">
                             <tr class="text-uppercase small fw-bold text-muted">
-                                <th class="text-center" style="width: 100px;">Date</th>
-                                <th class="text-center" style="width: 100px;">Cover</th>
+                                <th class="text-center" style="width: 100px;">Release Date</th>
+                                <th class="text-center" style="width: 120px;">Cover</th>
                                 <th style="width: 35%;">Game Details</th>
                                 <th>Consoles</th>
                                 <th>Genres</th>
@@ -102,8 +101,12 @@
                                     </td>
 
                                     <td>
-                                        <div class="fw-bold text-primary fs-5">@game.name</div>
-                                        <div class="text-muted small" style="max-height: 80px; overflow-y: auto; line-height: 1.4;">
+                                        <a href="@game.url" target="_blank" class="text-decoration-none">
+                                            <div class="fw-bold text-primary fs-5 mb-1">
+                                                @game.name <i class="bi bi-box-arrow-up-right small" style="font-size: 0.7rem;"></i>
+                                            </div>
+                                        </a>
+                                        <div class="text-muted small pe-2" style="max-height: 80px; overflow-y: auto; border-left: 2px solid #dee2e6; padding-left: 10px;">
                                             @(string.IsNullOrEmpty(game.summary) ? "No description available." : game.summary)
                                         </div>
                                     </td>
@@ -169,7 +172,7 @@
 
 @section Scripts {
     <script>
-        // Logic: JavaScript filter to search through the checkbox labels without page reload
+        // Sidebar platform search logic
         function filterPlatformList() {
             const searchTerm = document.getElementById('platformSearch').value.toLowerCase();
             const rows = document.querySelectorAll('.platform-row');

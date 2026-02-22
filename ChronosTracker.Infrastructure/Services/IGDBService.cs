@@ -50,7 +50,7 @@ public class IGDBService
             platformFilter = $"& platforms = ({ids})";
         }
 
-        var body = $"fields name, first_release_date, summary, platforms.name, genres.name, cover.url; " +
+        var body = $"fields name, url, first_release_date, summary, platforms.name, genres.name, cover.url; " +
             $"where first_release_date >0 {platformFilter}; " +
             $"sort first_release_date asc; " +
             $"limit 50; " +

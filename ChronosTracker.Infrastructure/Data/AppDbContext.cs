@@ -11,4 +11,5 @@ public class AppDbContext : DbContext
 
     public DbSet<Game> Games { get; set; }
     public DbSet<Series> Series { get; set; }
+    public DbSet<UserSettings> UserSettings { get; set; }
 }

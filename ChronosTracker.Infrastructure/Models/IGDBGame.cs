@@ -4,6 +4,7 @@ public class IGDBGame
 {
     public int id { get; set; }
     public string name { get; set; }
+    public string url { get; set; }
     public long? first_release_date { get; set; }
     public string summary { get; set; }
     public List<IGDBNestedItem> platforms { get; set; }
