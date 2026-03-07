@@ -1,0 +1,25 @@
+﻿@model ChronosTracker.Web.Models.ErrorViewModel
+@{
+    ViewData["Title"] = "System Glitch";
+}
+
+<div class="container mt-5">
+    <div class="card border-danger bg-dark text-white">
+        <div class="card-header bg-danger">
+            <h2 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Chronological Stream Interrupted</h2>
+        </div>
+        <div class="card-body text-center py-5">
+            <h3 class="card-title">Something went wrong in the Archive.</h3>
+            <p class="card-text fs-5 text-muted">
+                The logic gate failed to process this request. This usually happens if the external database is refreshing or the connection timed out.
+            </p>
+            <hr class="border-secondary" />
+            <a asp-controller="Games" asp-action="Browse" class="btn btn-outline-info btn-lg">
+                <i class="bi bi-arrow-clockwise"></i> Re-Sync (Try Again)
+            </a>
+        </div>
+        <div class="card-footer text-muted small">
+            Project: ChronosTracker | Status: 500 - Internal Server Error
+        </div>
+    </div>
+</div>

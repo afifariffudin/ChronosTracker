@@ -62,7 +62,12 @@ public class IGDBService
 
         System.Diagnostics.Debug.WriteLine($"IGDB Raw JSON: {jsonResponse}");
 
-        return JsonConvert.DeserializeObject<List<IGDBGame>>(jsonResponse) ?? new List<IGDBGame>();
+        //return JsonConvert.DeserializeObject<List<IGDBGame>>(jsonResponse) ?? new List<IGDBGame>();
+        var games = JsonConvert.DeserializeObject<List<IGDBGame>>(jsonResponse) ?? new List<IGDBGame>();
+        return games
+        .OrderBy(g => g.first_release_date ?? 0) // Primary Sort: Chronological
+        .ThenBy(g => g.name)                    // Secondary Sort: Alphabetical
+        .ToList();
     }
 
     public async Task<int> GetGamesCountAsync(List<int> platformIds = null, string searchTerm = null, long? minDate = null, bool onlyEnglish = true)
@@ -87,8 +92,9 @@ public class IGDBService
 
     private string BuildWhereClause(List<int> platformIds, string searchTerm, long? lastTimestamp = null, bool onlyEnglish = true)
     {
-        long startTimestamp = lastTimestamp ?? 0;
-        string where = $"where first_release_date > {startTimestamp} & first_release_date != null";
+        //long startTimestamp = lastTimestamp ?? 0;
+        long startTimestamp = !string.IsNullOrEmpty(searchTerm) ? 0 : (lastTimestamp ?? 0);
+        string where = $"where first_release_date >= {startTimestamp} & first_release_date != null";
 
         if (onlyEnglish)
         {

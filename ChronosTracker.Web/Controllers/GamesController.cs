@@ -181,4 +181,11 @@ public class GamesController : Controller
         }
         return Json(new { success = false, message = "Save the game as 'Interested' first!" });
     }
+
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error()
+    {
+        // In VBA, this is your central error logging area
+        return View();
+    }
 }
