@@ -279,7 +279,7 @@
                             @foreach (var game in Model)
                             {
                                 var safeTitle = HttpUtility.JavaScriptStringEncode(game.name ?? "");
-                                var safeSeries = HttpUtility.JavaScriptStringEncode(game.collection?.name ?? "");
+                                var safeSeries = HttpUtility.JavaScriptStringEncode(game.collections?.FirstOrDefault()?.name ?? "");
                                 var safeFranchise = HttpUtility.JavaScriptStringEncode(game.franchises?.FirstOrDefault()?.name ?? "");
                                 var startDate = localDatesStarted.GetValueOrDefault(game.id);
                                 var finishDate = localDatesFinished.GetValueOrDefault(game.id);
@@ -419,12 +419,17 @@
 
                                     @* SERIES *@
                                     <td class="small text-muted">
-                                        @if (game.collection != null)
+                                        @if (game.collections != null && game.collections.Any())
                                         {
-                                            <a href="@Url.Action("Browse", new { searchTerm = game.collection.name })"
-                                               class="text-muted text-decoration-none hover-purple">
-                                                @game.collection.name
-                                            </a>
+                                            <div class="d-flex flex-column gap-1">
+                                                @foreach (var c in game.collections)
+                                                {
+                                                    <a href="@Url.Action("Browse", new { searchTerm = c.name })"
+                                                       class="text-muted text-decoration-none hover-purple">
+                                                        @c.name
+                                                    </a>
+                                                }
+                                            </div>
                                         }
                                         else
                                         {

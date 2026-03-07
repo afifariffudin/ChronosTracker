@@ -47,20 +47,20 @@ public class IGDBService
         string fieldList = "fields name, url, summary, first_release_date, cover.url, " +
                            "platforms.name, genres.name, " +
                            "involved_companies.developer, involved_companies.company.name, " +
-                           "collection.name, franchises.name, parent_game.name, " +
+                           "collections.name, franchises.name, parent_game.name, " +
                            "total_rating, total_rating_count, hypes, " +
                            "external_games.external_game_source, external_games.uid, external_games.url, " +
-                           "language_supports.language, language_supports.language_support_type;";
+                           "language_supports.language, language_supports.language_support_type";
 
         string whereClause = BuildWhereClause(platformIds, searchTerm, lastTimestamp, onlyEnglish);
 
-        string body = $"{fieldList} {whereClause}; sort first_release_date asc; limit {limit};";
+        string body = $"{fieldList}; {whereClause}; sort first_release_date asc; limit {limit};";
 
         var content = new StringContent(body, Encoding.UTF8, "text/plain");
         var response = await _httpClient.PostAsync("https://api.igdb.com/v4/games", content);
         var jsonResponse = await response.Content.ReadAsStringAsync();
 
-        System.Diagnostics.Debug.WriteLine($"IGDB Response: {jsonResponse}");
+        System.Diagnostics.Debug.WriteLine($"IGDB Raw JSON: {jsonResponse}");
 
         return JsonConvert.DeserializeObject<List<IGDBGame>>(jsonResponse) ?? new List<IGDBGame>();
     }
