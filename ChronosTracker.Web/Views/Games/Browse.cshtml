@@ -9,13 +9,11 @@
     var localStatuses = ViewBag.LocalStatuses as Dictionary<int, int> ?? new Dictionary<int, int>();
     var localDatesStarted = ViewBag.LocalDatesStarted as Dictionary<int, DateTime?> ?? new Dictionary<int, DateTime?>();
     var localDatesFinished = ViewBag.LocalDatesFinished as Dictionary<int, DateTime?> ?? new Dictionary<int, DateTime?>();
-    int currentPage = ViewBag.CurrentPage ?? 0;
     string searchTerm = ViewBag.SearchTerm;
-    int totalPages = ViewBag.TotalPages ?? 0;
 
-    // Era Pagination Variables
-    long? minDate = ViewBag.MinDate;
-    long? lastTimestamp = ViewBag.LastTimestamp;
+    // We no longer need currentPage or totalPages for the logic
+    long? nextTimestamp = ViewBag.NextTimestamp; // The cursor for the "Next" button
+    long? minDate = ViewBag.MinDate; // The cursor we started this page with
 }
 
 <style>
@@ -163,58 +161,56 @@
         }
 </style>
 
-<div class="container-fluid px-4 mt-2">
-    <div class="d-flex justify-content-between align-items-center mb-3 bg-dark p-2 rounded border border-secondary shadow-sm">
-        <div class="d-flex gap-2 align-items-center">
-            <button class="btn btn-sm btn-outline-light" type="button" id="sidebarToggleBtn" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse">
-                <i class="bi bi-layout-sidebar-inset"></i>
-            </button>
+        <div class="container-fluid px-4 mt-2">
+            <div class="d-flex justify-content-between align-items-center mb-3 bg-dark p-2 rounded border border-secondary shadow-sm">
+                <div class="d-flex gap-2 align-items-center">
+                    <button class="btn btn-sm btn-outline-light" type="button" id="sidebarToggleBtn" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse">
+                        <i class="bi bi-layout-sidebar-inset"></i>
+                    </button>
 
-            <div class="btn-group btn-group-sm ms-2">
-                @if (currentPage > 0 || minDate != null)
+                    <div class="btn-group btn-group-sm ms-2">
+            @* RESET: Takes you back to the very beginning (1970) *@
+            @if (minDate != null && minDate > 0)
+            {
+                <a class="btn btn-outline-secondary" title="Reset to Beginning"
+                   href="@Url.Action("Browse", new { platformIds = selectedPlatforms, searchTerm = searchTerm })">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            }
+
+            @* PREVIOUS: This is tricky. For now, the best 'Previous' is a Reset or using Browser Back. 
+               True 'Back' in Timestamps requires a 'History Stack'. *@
+    
+            <span class="btn btn-dark border-secondary px-3 fw-bold text-purple page-indicator" style="color:var(--accent-purple)">
+                @if (Model.Any())
                 {
-                    <a class="btn btn-outline-secondary" title="Reset to Beginning"
-                       href="@Url.Action("Browse", new { page = 0, platformIds = selectedPlatforms, searchTerm = searchTerm })">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </a>
-
-                    <a class="btn btn-outline-secondary"
-                       href="@Url.Action("Browse", new { page = currentPage - 1, platformIds = selectedPlatforms, searchTerm = searchTerm, minDate = minDate })">
-                        <i class="bi bi-chevron-left"></i>
-                    </a>
+                    @Model.First().ReleaseDate?.ToString("yyyy") @:- @Model.Last().ReleaseDate?.ToString("yyyy")
                 }
-
-                <span class="btn btn-dark border-secondary px-3 fw-bold text-purple page-indicator" style="color:var(--accent-purple)">
-                    PAGE @(currentPage + 1)
-                </span>
-
-                @if (Model.Count == 50)
+                else
                 {
-                    if (currentPage < 99)
-                    {
-                        <a class="btn btn-outline-secondary"
-                           href="@Url.Action("Browse", new { page = currentPage + 1, platformIds = selectedPlatforms, searchTerm = searchTerm, minDate = minDate })">
-                            <i class="bi bi-chevron-right"></i>
-                        </a>
-                    }
-                    else
-                    {
-                        <a class="btn btn-primary fw-bold" title="Next 5,000 Games"
-                           href="@Url.Action("Browse", new { page = 0, platformIds = selectedPlatforms, searchTerm = searchTerm, minDate = lastTimestamp })">
-                            Next Era <i class="bi bi-fast-forward-fill ms-1"></i>
-                        </a>
-                    }
+                    @:ERA VIEW
                 }
-            </div>
+            </span>
+
+            @* NEXT ERA: The core of your 'Always 50' logic *@
+            @if (Model.Count >= 50)
+            {
+                <a class="btn btn-primary fw-bold" title="Next 50 New Games"
+                   href="@Url.Action("Browse", new { lastTimestamp = nextTimestamp, platformIds = selectedPlatforms, searchTerm = searchTerm })">
+                    Next Era <i class="bi bi-chevron-right"></i>
+                </a>
+            }
+        </div>
 
             <form asp-action="Browse" method="get" class="ms-3">
+                @* Keep platforms, but DO NOT include lastTimestamp here so search starts from 1970 *@
                 @foreach (var id in selectedPlatforms)
                 {
                     <input type="hidden" name="platformIds" value="@id" />
                 }
                 <div class="input-group input-group-sm" style="width: 300px;">
                     <input type="text" name="searchTerm" class="form-control bg-transparent border-secondary text-light"
-                           placeholder="Quick search..." value="@searchTerm">
+                           placeholder="Search all eras..." value="@searchTerm">
                     <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
                 </div>
             </form>
@@ -263,17 +259,17 @@
                     <table class="table table-hover align-middle mb-0 table-archive">
                         <thead>
                             <tr class="small">
+                                <th class="text-center align-middle sticky-action px-3" style="width:120px;">ACTION</th>
                                 <th class="col-date ps-3 text-center align-middle">RELEASE</th>
                                 <th class="text-center align-middle">COVER</th>
                                 <th class="col-details text-center align-middle">GAME DETAILS</th>
+                                <th class="text-center align-middle">DEVELOPER</th>
+                                <th class="text-center align-middle">GENRES</th>
                                 <th class="text-center align-middle">PARENT GAME</th>
                                 <th class="text-center align-middle">SERIES</th>
                                 <th class="text-center align-middle">FRANCHISE</th>
-                                <th class="text-center align-middle">DEVELOPER</th>
-                                <th class="text-center align-middle">GENRES</th>
                                 <th class="text-center align-middle">PLATFORMS</th>
                                 <th class="text-center align-middle" style="width: 100px;">WORTH</th>
-                                <th class="text-center align-middle sticky-action px-3" style="width:120px;">ACTION</th>
                                 <th class="text-center align-middle" style="width:150px;">START</th>
                                 <th class="text-center align-middle" style="width:150px;">FINISH</th>
                                 <th class="text-center align-middle" style="width:120px;">PLAY STATUS</th>
@@ -308,6 +304,29 @@
                                 <tr id="row_@game.id" 
                                     class="@(s == 2 ? "d-none is-hidden-row" : "") @(playStatus == "Finished" ? "is-finished-row" : "")"
                                     style="@(s == 2 ? "opacity: 0.3;" : "")">
+ 
+                                    @* ACTION *@
+                                    <td class="text-center sticky-action px-3">
+                                        <div id="actions_@game.id" class="btn-group btn-group-sm">
+                                            @if (s == 2)
+                                            {
+                                                <button class="btn btn-warning" onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 0)"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                            }
+                                            else
+                                            {
+                                                @* Add/Interested Button *@
+                                                <button class="btn @(s == 1 ? "btn-success" : "btn-outline-success")" style="@(s == 1 ? "" : "color:var(--accent-teal); border-color:var(--accent-teal)")"
+                                                        onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 1, '@safeSeries', '@safeFranchise', @game.SupportsEnglish.ToString().ToLower())">
+                                                    <i class="bi @(s == 1 ? "bi-check-circle-fill" : "bi-plus-circle")"></i>
+                                                </button>
+                                                @* Hide Button *@
+                                                <button class="btn btn-outline-danger"
+                                                        onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 2, '@safeSeries', '@safeFranchise', @game.SupportsEnglish.ToString().ToLower())">
+                                                    <i class="bi bi-eye-slash"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
 
                                 @* RELEASE *@
                                     <td class="text-center text-nowrap fw-bold px-3">@game.ReleaseDate?.ToString("dd-MMM-yyyy")</td>
@@ -367,6 +386,22 @@
                                         </div>
                                     </td>
 
+                                    @* DEVELOPER *@
+                                    <td class="small text-muted">@(game.involved_companies != null ? string.Join(", ", game.involved_companies.Where(c => c.developer).Select(c => c.company.name)) : "-")</td>
+
+                                    @* GENRES *@
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @if (game.genres != null)
+                                            {
+                                                @foreach (var g in game.genres)
+                                                {
+                                                    <span class="badge badge-genre" style="font-size:0.65rem;">@g.name</span>
+                                                }
+                                            }
+                                        </div>
+                                    </td>
+
                                     @* PARENT GAME *@
                                     <td class="small text-muted">
                                         @if (game.parent_game != null)
@@ -418,22 +453,6 @@
                                         }
                                     </td>
 
-                                    @* DEVELOPER *@
-                                    <td class="small text-muted">@(game.involved_companies != null ? string.Join(", ", game.involved_companies.Where(c => c.developer).Select(c => c.company.name)) : "-")</td>
-
-                                    @* GENRES *@
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            @if (game.genres != null)
-                                            {
-                                                @foreach (var g in game.genres)
-                                                {
-                                                    <span class="badge badge-genre" style="font-size:0.65rem;">@g.name</span>
-                                                }
-                                            }
-                                        </div>
-                                    </td>
-
                                     @* PLATFORMS *@
                                     <td>
                                         <div class="d-flex flex-wrap gap-1">
@@ -455,27 +474,6 @@
                                             @if ((game.hypes ?? 0) > 50)
                                             {
                                                 <i class="bi bi-fire popular-flame" title="High Popularity (Hype)"></i>
-                                            }
-                                        </div>
-                                    </td>
-
-                                    @* ACTION *@
-                                    <td class="text-center sticky-action px-3">
-                                        <div id="actions_@game.id" class="btn-group btn-group-sm">
-                                            @if (s == 2)
-                                            {
-                                                <button class="btn btn-warning" onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 0)"><i class="bi bi-arrow-counterclockwise"></i></button>
-                                            }
-                                            else
-                                            {
-                                                <button class="btn @(s == 1 ? "btn-success" : "btn-outline-success")" style="@(s == 1 ? "" : "color:var(--accent-teal); border-color:var(--accent-teal)")"
-                                                        onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 1, '@safeSeries', '@safeFranchise')">
-                                                    <i class="bi @(s == 1 ? "bi-check-circle-fill" : "bi-plus-circle")"></i>
-                                                </button>
-                                                <button class="btn btn-outline-danger"
-                                                        onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 2, '@safeSeries', '@safeFranchise')">
-                                                    <i class="bi bi-eye-slash"></i>
-                                                </button>
                                             }
                                         </div>
                                     </td>
@@ -520,15 +518,16 @@
             sidebar.addEventListener('hidden.bs.collapse', () => localStorage.setItem('sidebarState', 'closed'));
         });
 
-        function updateStatus(id, title, cover, date, status, series, franchise) {
+        function updateStatus(id, title, cover, date, status, series, franchise, supportsEnglish) {
                     $.post('/Games/UpdateStatus', {
                         igdbId: id,
                         title: title,
                         coverUrl: cover,
                         releaseDate: date,
                         status: status,
-                        seriesName : series,
-                        franchiseName : franchise
+                        seriesname : series,
+                        franchisename : franchise,
+                        supportsEnglish: supportsEnglish
                     }, function (res) {
                         if (res.success) {
                             const row = $(`#row_${id}`);

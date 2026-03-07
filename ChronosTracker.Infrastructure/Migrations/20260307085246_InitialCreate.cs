@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ChronosTracker.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class FinalCleanup : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -22,6 +22,7 @@ namespace ChronosTracker.Infrastructure.Migrations
                     ReleaseDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     SeriesName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     FranchiseName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    SupportsEnglish = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     Status = table.Column<int>(type: "int", nullable: false),
                     DateCreated = table.Column<DateTime>(type: "datetime2", nullable: true),
                     DateStarted = table.Column<DateTime>(type: "datetime2", nullable: true),

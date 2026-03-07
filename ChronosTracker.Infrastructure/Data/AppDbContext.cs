@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Title).IsRequired().HasMaxLength(255);
             entity.Property(e => e.SeriesName).HasMaxLength(200);
             entity.Property(e => e.FranchiseName).HasMaxLength(200);
+            entity.Property(e => e.SupportsEnglish).HasDefaultValue(false);
         });
         modelBuilder.Entity<Game>().HasIndex(g => g.IGDBId).IsUnique();
     }

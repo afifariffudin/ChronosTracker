@@ -35,7 +35,7 @@ public class IGDBService
         return _accessToken;
     }
 
-    public async Task<List<IGDBGame>> GetBrowseGamesAsync(int offset = 0, List<int> platformIds = null, string searchTerm = null, long? minDate = null)
+    public async Task<List<IGDBGame>> GetBrowseGamesAsync(int limit = 250, List<int> platformIds = null, string searchTerm = null, long? lastTimestamp = null, bool onlyEnglish = true)
     {
         var token = await GetAccessTokenAsync();
         var clientId = _config["IGDB:ClientId"];
@@ -49,11 +49,12 @@ public class IGDBService
                            "involved_companies.developer, involved_companies.company.name, " +
                            "collection.name, franchises.name, parent_game.name, " +
                            "total_rating, total_rating_count, hypes, " +
-                           "external_games.external_game_source, external_games.uid, external_games.url;";
+                           "external_games.external_game_source, external_games.uid, external_games.url, " +
+                           "language_supports.language, language_supports.language_support_type;";
 
-        string whereClause = BuildWhereClause(platformIds, searchTerm, minDate);
+        string whereClause = BuildWhereClause(platformIds, searchTerm, lastTimestamp, onlyEnglish);
 
-        string body = $"{fieldList} {whereClause}; sort first_release_date asc; limit 50; offset {offset};";
+        string body = $"{fieldList} {whereClause}; sort first_release_date asc; limit {limit};";
 
         var content = new StringContent(body, Encoding.UTF8, "text/plain");
         var response = await _httpClient.PostAsync("https://api.igdb.com/v4/games", content);
@@ -64,7 +65,7 @@ public class IGDBService
         return JsonConvert.DeserializeObject<List<IGDBGame>>(jsonResponse) ?? new List<IGDBGame>();
     }
 
-    public async Task<int> GetGamesCountAsync(List<int> platformIds = null, string searchTerm = null, long? minDate = null)
+    public async Task<int> GetGamesCountAsync(List<int> platformIds = null, string searchTerm = null, long? minDate = null, bool onlyEnglish = true)
     {
         var token = await GetAccessTokenAsync();
         var clientId = _config["IGDB:ClientId"];
@@ -73,7 +74,7 @@ public class IGDBService
         _httpClient.DefaultRequestHeaders.Add("Client-ID", clientId);
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
 
-        string whereClause = BuildWhereClause(platformIds, searchTerm, minDate);
+        string whereClause = BuildWhereClause(platformIds, searchTerm, minDate, onlyEnglish);
         string body = $"{whereClause};";
 
         var content = new StringContent(body, Encoding.UTF8, "text/plain");
@@ -84,10 +85,19 @@ public class IGDBService
         return result?.count ?? 0;
     }
 
-    private string BuildWhereClause(List<int> platformIds, string searchTerm, long? minDate = null)
+    private string BuildWhereClause(List<int> platformIds, string searchTerm, long? lastTimestamp = null, bool onlyEnglish = true)
     {
-        long startTimestamp = minDate ?? 0;
-        string where = $"where first_release_date > {startTimestamp}";
+        long startTimestamp = lastTimestamp ?? 0;
+        string where = $"where first_release_date > {startTimestamp} & first_release_date != null";
+
+        if (onlyEnglish)
+        {
+            where += " & (" +
+                             "(language_supports.language = 12 & language_supports.language_support_type = 3) | " +
+                             "(language_supports.language = 12 & language_supports.language_support_type = 2) | " +
+                             "language_supports = null" +
+                             ")";
+        }
 
         if (!string.IsNullOrEmpty(searchTerm))
         {

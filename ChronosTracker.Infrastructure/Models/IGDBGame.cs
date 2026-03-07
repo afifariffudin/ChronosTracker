@@ -20,6 +20,11 @@ public class IGDBGame
     public int? total_rating_count { get; set; }
     public int? hypes { get; set; }
 
+    [JsonProperty("language_supports")]
+    public List<IGDBLanguageSupport> language_supports { get; set; } = new();
+
+    [JsonIgnore]
+    public bool SupportsEnglish => language_supports?.Any(ls => ls.language == 12) ?? false;
 
     [JsonProperty("external_games")]
     public List<IGDBExternalGame> external_games { get; set; } = new();
@@ -59,6 +64,13 @@ public class IGDBGame
     public DateTime? ReleaseDate => first_release_date.HasValue
         ? DateTimeOffset.FromUnixTimeSeconds(first_release_date.Value).DateTime
         : null;
+}
+
+public class IGDBLanguageSupport
+{
+    public int id { get; set; }
+    public int language { get; set; } // This will be '12' for English
+    public int language_support_type { get; set; }
 }
 
 public class IGDBExternalGame

@@ -17,12 +17,11 @@ public class GamesController : Controller
         _igdbService = igdbService;
     }
 
-
-    public async Task<IActionResult> Browse(int page = 0, List<int> platformIds = null, string searchTerm = null, long? minDate = null)
+    public async Task<IActionResult> Browse(long? lastTimestamp = null, List<int> platformIds = null, string searchTerm = null)
     {
         try
         {
-            // 1. Auto-apply Global Hardware Profile if no temporary filter is set
+            // 1. Auto-apply Global Hardware Profile
             if (platformIds == null || !platformIds.Any())
             {
                 var settings = await _context.UserSettings.FirstOrDefaultAsync();
@@ -35,39 +34,51 @@ public class GamesController : Controller
                 }
             }
 
-            // 2. Fetch Total Count for the CURRENT Era (starts from minDate)
-            int totalCount = await _igdbService.GetGamesCountAsync(platformIds, searchTerm, minDate);
-            int totalPages = (int)Math.Ceiling(totalCount / 50.0);
+            // 2. Get ALL IDs from your local DB to exclude (Hidden, Interested, etc.)
+            // This is key to ensuring the API doesn't return things you've already processed
+            var interactedIds = await _context.Games
+                .Where(g => g.Status == 2)
+                .Select(g => g.IGDBId)
+                .Where(id => id.HasValue)
+                .Cast<int>()
+                .ToListAsync();
 
-            // API Limit: Offset cannot exceed 5000 (100 pages).
-            if (totalPages > 100) totalPages = 100;
+            // 3. Fetch a "Big Bucket" (250) from IGDB starting from lastTimestamp
+            // We fetch more than we need so we have enough leftovers after filtering
+            var bigBatch = await _igdbService.GetBrowseGamesAsync(250, platformIds, searchTerm, lastTimestamp);
 
-            // 3. Fetch Data from IGDB starting from the minDate era
-            var games = await _igdbService.GetBrowseGamesAsync(page * 50, platformIds, searchTerm, minDate);
+            // 4. Filter the Big Batch in memory against your local database
+            var filteredGames = bigBatch
+                .Where(g => !interactedIds.Contains(g.id))
+                .Take(50) // Now we "fill" the page to exactly 50
+                .ToList();
+
             var platforms = await _igdbService.GetPlatformsAsync();
 
-            // 4. Match IGDB results against local DB
-            var igdbIdsInPage = games.Select(g => g.id).ToList();
+            // 5. Match IGDB results against local DB (for status badges/dates)
+            var igdbIdsInPage = filteredGames.Select(g => g.id).ToList();
             var localGames = await _context.Games
                 .Where(g => g.IGDBId.HasValue && igdbIdsInPage.Contains(g.IGDBId.Value))
                 .ToListAsync();
+
             var localStatuses = localGames.ToDictionary(g => g.IGDBId!.Value, g => g.Status);
             var localDatesStarted = localGames.ToDictionary(g => g.IGDBId!.Value, g => g.DateStarted);
             var localDatesFinished = localGames.ToDictionary(g => g.IGDBId!.Value, g => g.DateFinished);
 
-            // 5. Prepare View Metadata
-            ViewBag.CurrentPage = page;
-            ViewBag.TotalPages = totalPages;
+            // 6. Prepare View Metadata
+            // Note: We are passing 'LastTimestamp' instead of 'Page'
             ViewBag.Platforms = platforms;
             ViewBag.SelectedPlatforms = platformIds ?? new List<int>();
             ViewBag.LocalStatuses = localStatuses;
             ViewBag.LocalDatesStarted = localDatesStarted;
             ViewBag.LocalDatesFinished = localDatesFinished;
             ViewBag.SearchTerm = searchTerm;
-            ViewBag.MinDate = minDate;
-            ViewBag.LastTimestamp = games.LastOrDefault()?.first_release_date;
+            ViewBag.MinDate = lastTimestamp; // Tracks where we started
 
-            return View(games);
+            // This is the most important part for your "Next" button:
+            ViewBag.NextTimestamp = filteredGames.LastOrDefault()?.first_release_date;
+
+            return View(filteredGames);
         }
         catch (Exception ex)
         {
@@ -108,7 +119,7 @@ public class GamesController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> UpdateStatus(int igdbId, string title, string coverUrl, string releaseDate, int status, string? seriesname, string? franchisename)
+    public async Task<IActionResult> UpdateStatus(int igdbId, string title, string coverUrl, string releaseDate, int status, string? seriesname, string? franchisename, bool supportsEnglish)
     {
         var game = await _context.Games.FirstOrDefaultAsync(g => g.IGDBId == igdbId);
 
@@ -123,6 +134,7 @@ public class GamesController : Controller
                 Status = status,
                 SeriesName = seriesname,
                 FranchiseName = franchisename,
+                SupportsEnglish = supportsEnglish,
                 DateCreated = DateTime.UtcNow
             };
 
@@ -147,6 +159,7 @@ public class GamesController : Controller
                 game.Status = status;
                 game.SeriesName = seriesname;
                 game.FranchiseName = franchisename;
+                game.SupportsEnglish = supportsEnglish;
             }
         }
 
