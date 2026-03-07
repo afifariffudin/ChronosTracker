@@ -1,4 +1,5 @@
 ﻿@using ChronosTracker.Infrastructure.Models
+@using System.Web
 @model List<IGDBGame>
 
 @{
@@ -6,6 +7,8 @@
     var platforms = ViewBag.Platforms as List<IGDBNestedItem> ?? new List<IGDBNestedItem>();
     var selectedPlatforms = ViewBag.SelectedPlatforms as List<int> ?? new List<int>();
     var localStatuses = ViewBag.LocalStatuses as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var localDatesStarted = ViewBag.LocalDatesStarted as Dictionary<int, DateTime?> ?? new Dictionary<int, DateTime?>();
+    var localDatesFinished = ViewBag.LocalDatesFinished as Dictionary<int, DateTime?> ?? new Dictionary<int, DateTime?>();
     int currentPage = ViewBag.CurrentPage ?? 0;
     string searchTerm = ViewBag.SearchTerm;
     int totalPages = ViewBag.TotalPages ?? 0;
@@ -127,6 +130,37 @@
     .hover-purple:hover {
         color: var(--accent-purple) !important;
     }
+
+    .worth-meter {
+        border: 1px solid var(--border-soft);
+        border-radius: 8px;
+        padding: 4px;
+        text-align: center;
+        min-width: 65px;
+    }
+
+    .worth-high {
+        border-color: var(--accent-teal);
+        color: var(--accent-teal);
+    }
+
+    .popular-flame {
+        color: #ff5f00;
+        margin-left: 4px;
+        filter: drop-shadow(0 0 2px rgba(255,95,0,0.5));
+    }
+
+    /* Finished Game Gray-out */
+    .is-finished {
+        opacity: 0.3;
+        filter: grayscale(100%);
+        transition: 0.4s;
+    }
+
+        .is-finished:hover {
+            opacity: 0.7;
+            filter: grayscale(20%);
+        }
 </style>
 
 <div class="container-fluid px-4 mt-2">
@@ -186,6 +220,11 @@
             </form>
         </div>
 
+        <div class="form-check form-switch pt-1 ms-3">
+            <input class="form-check-input" type="checkbox" id="hideFinishedToggle" onchange="toggleFinishedRows()">
+            <label class="form-check-label small fw-bold text-success mb-0" for="hideFinishedToggle">Hide Finished</label>
+        </div>
+
         <div class="d-flex align-items-center gap-3">
             <div class="form-check form-switch pt-1">
                 <input class="form-check-input" type="checkbox" id="showHiddenToggle" onchange="toggleHiddenRows()">
@@ -233,18 +272,44 @@
                                 <th class="text-center align-middle">DEVELOPER</th>
                                 <th class="text-center align-middle">GENRES</th>
                                 <th class="text-center align-middle">PLATFORMS</th>
+                                <th class="text-center align-middle" style="width: 100px;">WORTH</th>
                                 <th class="text-center align-middle sticky-action px-3" style="width:120px;">ACTION</th>
+                                <th class="text-center align-middle" style="width:150px;">START</th>
+                                <th class="text-center align-middle" style="width:150px;">FINISH</th>
+                                <th class="text-center align-middle" style="width:120px;">PLAY STATUS</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var game in Model)
                             {
+                                var safeTitle = HttpUtility.JavaScriptStringEncode(game.name ?? "");
+                                var safeSeries = HttpUtility.JavaScriptStringEncode(game.collection?.name ?? "");
+                                var safeFranchise = HttpUtility.JavaScriptStringEncode(game.franchises?.FirstOrDefault()?.name ?? "");
+                                var startDate = localDatesStarted.GetValueOrDefault(game.id);
+                                var finishDate = localDatesFinished.GetValueOrDefault(game.id);
+
+                                string playStatus = "Shelf";
+                                string statusClass = "text-muted opacity-50";
+
+                                if (startDate.HasValue && finishDate.HasValue)
+                                {
+                                    playStatus = "Finished";
+                                    statusClass = "text-success fw-bold";
+                                }
+                                else if (startDate.HasValue)
+                                {
+                                    playStatus = "Playing";
+                                    statusClass = "text-warning fw-bold";
+                                }
+
                                 int s = localStatuses.GetValueOrDefault(game.id, 0);
-                                var escaped = (game.name ?? string.Empty).Replace("'", "\'");
                                 var cover = !string.IsNullOrEmpty(game.cover?.url) ? "https:" + game.cover.url.Replace("t_thumb", "t_cover_big") : "";
 
-                                <tr id="row_@game.id" class="@(s == 2 ? "d-none is-hidden-row" : "")" style="@(s == 2 ? "opacity: 0.3;" : "")">
-                                    @* RELEASE *@
+                                <tr id="row_@game.id" 
+                                    class="@(s == 2 ? "d-none is-hidden-row" : "") @(playStatus == "Finished" ? "is-finished-row" : "")"
+                                    style="@(s == 2 ? "opacity: 0.3;" : "")">
+
+                                @* RELEASE *@
                                     <td class="text-center text-nowrap fw-bold px-3">@game.ReleaseDate?.ToString("dd-MMM-yyyy")</td>
                                     @* COVER *@
                                     <td class="text-center">
@@ -304,28 +369,28 @@
 
                                     @* PARENT GAME *@
                                     <td class="small text-muted">
-                                    @if (game.parent_game != null)
-                                    {
-                                        <a href="@Url.Action("Browse", new { searchTerm = game.parent_game.name })"
-                                           class="text-muted text-decoration-none hover-purple">
-                                            @game.parent_game.name
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <span>-</span>
-                                    }
+                                        @if (game.parent_game != null)
+                                        {
+                                            <a href="@Url.Action("Browse", new { searchTerm = game.parent_game.name })"
+                                               class="text-muted text-decoration-none hover-purple">
+                                                @game.parent_game.name
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
                                     </td>
 
                                     @* SERIES *@
                                     <td class="small text-muted">
-                                    @if (game.collection != null)
-                                    {
-                                        <a href="@Url.Action("Browse", new { searchTerm = game.collection.name })"
+                                        @if (game.collection != null)
+                                        {
+                                            <a href="@Url.Action("Browse", new { searchTerm = game.collection.name })"
                                                class="text-muted text-decoration-none hover-purple">
-                                            @game.collection.name
-                                        </a>
-                                    }
+                                                @game.collection.name
+                                            </a>
+                                        }
                                         else
                                         {
                                             <span>-</span>
@@ -335,27 +400,27 @@
 
                                     @* FRANCHISE *@
                                     <td class="small text-muted">
-                                    @if (game.franchises != null && game.franchises.Any())
-                                    {
-                                        <div class="d-flex flex-column gap-1">
-                                            @foreach (var f in game.franchises)
-                                            {
-                                                <a href="@Url.Action("Browse", new { searchTerm = f.name })"
+                                        @if (game.franchises != null && game.franchises.Any())
+                                        {
+                                            <div class="d-flex flex-column gap-1">
+                                                @foreach (var f in game.franchises)
+                                                {
+                                                    <a href="@Url.Action("Browse", new { searchTerm = f.name })"
                                                        class="text-muted text-decoration-none hover-purple">
-                                                    @f.name
-                                                </a>
-                                            }
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <span>-</span>
-                                    }
+                                                        @f.name
+                                                    </a>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
                                     </td>
 
                                     @* DEVELOPER *@
                                     <td class="small text-muted">@(game.involved_companies != null ? string.Join(", ", game.involved_companies.Where(c => c.developer).Select(c => c.company.name)) : "-")</td>
-                                    
+
                                     @* GENRES *@
                                     <td>
                                         <div class="d-flex flex-wrap gap-1">
@@ -382,25 +447,58 @@
                                         </div>
                                     </td>
 
+                                    @* WORTH *@
+                                    <td class="text-center">
+                                        <div class="worth-meter @(game.WorthinessScore > 80 ? "worth-high" : "")">
+                                            <div class="fw-bold">@game.WorthinessScore%</div>
+                                            <div style="font-size: 0.6rem;" class="text-muted">n=@game.total_rating_count</div>
+                                            @if ((game.hypes ?? 0) > 50)
+                                            {
+                                                <i class="bi bi-fire popular-flame" title="High Popularity (Hype)"></i>
+                                            }
+                                        </div>
+                                    </td>
+
                                     @* ACTION *@
                                     <td class="text-center sticky-action px-3">
                                         <div id="actions_@game.id" class="btn-group btn-group-sm">
                                             @if (s == 2)
                                             {
-                                                <button class="btn btn-warning" onclick="updateStatus(@game.id, '@escaped', '@cover', '@game.ReleaseDate', 0)"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                                <button class="btn btn-warning" onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 0)"><i class="bi bi-arrow-counterclockwise"></i></button>
                                             }
                                             else
                                             {
                                                 <button class="btn @(s == 1 ? "btn-success" : "btn-outline-success")" style="@(s == 1 ? "" : "color:var(--accent-teal); border-color:var(--accent-teal)")"
-                                                        onclick="updateStatus(@game.id, '@escaped', '@cover', '@game.ReleaseDate', 1)">
+                                                        onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 1, '@safeSeries', '@safeFranchise')">
                                                     <i class="bi @(s == 1 ? "bi-check-circle-fill" : "bi-plus-circle")"></i>
                                                 </button>
-                                                <button class="btn btn-outline-danger" onclick="updateStatus(@game.id, '@escaped', '@cover', '@game.ReleaseDate', 2)">
+                                                <button class="btn btn-outline-danger"
+                                                        onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 2, '@safeSeries', '@safeFranchise')">
                                                     <i class="bi bi-eye-slash"></i>
                                                 </button>
                                             }
                                         </div>
                                     </td>
+
+                                    @* START DATE *@
+                                    <td class="px-2">
+                                        <input type="date" class="form-control form-control-sm bg-dark text-light border-secondary"
+                                               value="@(localDatesStarted.GetValueOrDefault(game.id)?.ToString("yyyy-MM-dd"))"
+                                               onchange="updateDate(@game.id, 'start', this.value)" />
+                                    </td>
+
+                                    @* FINISH DATE *@
+                                    <td class="px-2">
+                                        <input type="date" class="form-control form-control-sm bg-dark text-light border-secondary"
+                                               value="@(localDatesFinished.GetValueOrDefault(game.id)?.ToString("yyyy-MM-dd"))"
+                                               onchange="updateDate(@game.id, 'finish', this.value)" />
+                                    </td>
+
+                                    @* PLAY STATUS *@
+                                    <td class="text-center small @statusClass">
+                                        @playStatus.ToUpper()
+                                    </td>
+
                                 </tr>
                             }
                         </tbody>
@@ -422,18 +520,82 @@
             sidebar.addEventListener('hidden.bs.collapse', () => localStorage.setItem('sidebarState', 'closed'));
         });
 
-        function updateStatus(id, title, cover, date, status) {
-            $.post('/Games/UpdateStatus', { igdbId: id, title: title, coverUrl: cover, releaseDate: date, status: status }, function (res) {
-                if (res.success) { location.reload(); }
-            });
-        }
+        function updateStatus(id, title, cover, date, status, series, franchise) {
+                    $.post('/Games/UpdateStatus', {
+                        igdbId: id,
+                        title: title,
+                        coverUrl: cover,
+                        releaseDate: date,
+                        status: status,
+                        seriesName : series,
+                        franchiseName : franchise
+                    }, function (res) {
+                        if (res.success) {
+                            const row = $(`#row_${id}`);
+
+                            if (status == 2) {
+                                // Visual 'Hide' logic
+                                row.addClass('is-hidden-row').css('opacity', '0.3');
+                                if (!$('#showHiddenToggle').is(':checked')) {
+                                    row.fadeOut(300);
+                                }
+                            } else {
+                                location.reload();
+                            }
+                        }
+                    });
+                }
+
         function toggleHiddenRows() {
-            const show = $('#showHiddenToggle').is(':checked');
-            $('.is-hidden-row').each(function () { if (show) $(this).removeClass('d-none'); else $(this).addClass('d-none'); });
+            // 1. Get the True/False state of the switch
+            const isChecked = $('#showHiddenToggle').is(':checked');
+
+            // 2. Find every row marked as "hidden"
+            const hiddenRows = $('.is-hidden-row');
+
+            if (isChecked) {
+                hiddenRows.removeClass('d-none').fadeIn(200);
+            } else {
+                hiddenRows.addClass('d-none');
+            }
         }
+
         function filterPlatformList() {
             const term = $('#platformSearch').val().toLowerCase();
-            $('.platform-row').each(function () { $(this).toggle($(this).text().toLowerCase().includes(term)); });
+            $('.platform-row').each(function () {
+                $(this).toggle($(this).text().toLowerCase().includes(term));
+            });
+        }
+
+                function toggleFinishedRows() {
+            const shouldHide = $('#hideFinishedToggle').is(':checked');
+            const finishedRows = $('.is-finished-row');
+
+            if (shouldHide) {
+                finishedRows.addClass('d-none');
+            } else {
+                // Only show them if they aren't ALSO "Hidden" (Status 2)
+                finishedRows.each(function() {
+                    if (!$(this).hasClass('is-hidden-row')) {
+                        $(this).removeClass('d-none');
+                    }
+                });
+            }
+        }
+
+                function updateDate(id, type, dateValue) {
+            $.post('/Games/UpdateDates', {
+                igdbId: id,
+                type: type,
+                date: dateValue
+            }, function (res) {
+                if (res.success) {
+                    location.reload();
+
+                } else {
+                        alert(res.message);
+                }
+            });
         }
     </script>
 }

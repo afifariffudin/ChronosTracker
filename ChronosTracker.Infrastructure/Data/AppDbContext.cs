@@ -10,6 +10,18 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<Game> Games { get; set; }
-    public DbSet<Series> Series { get; set; }
     public DbSet<UserSettings> UserSettings { get; set; }
-}
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Game>(entity =>
+        {
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.SeriesName).HasMaxLength(200);
+            entity.Property(e => e.FranchiseName).HasMaxLength(200);
+        });
+        modelBuilder.Entity<Game>().HasIndex(g => g.IGDBId).IsUnique();
+    }
+    }

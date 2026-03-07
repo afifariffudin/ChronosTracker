@@ -44,12 +44,11 @@ public class IGDBService
         _httpClient.DefaultRequestHeaders.Add("Client-ID", clientId);
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
 
-        // FIX: We now explicitly expand 'external_games' to get both the Source ID and the UID.
-        // Dot notation (external_games.uid) is required to get the data instead of just a numeric ID.
         string fieldList = "fields name, url, summary, first_release_date, cover.url, " +
                            "platforms.name, genres.name, " +
                            "involved_companies.developer, involved_companies.company.name, " +
                            "collection.name, franchises.name, parent_game.name, " +
+                           "total_rating, total_rating_count, hypes, " +
                            "external_games.external_game_source, external_games.uid, external_games.url;";
 
         string whereClause = BuildWhereClause(platformIds, searchTerm, minDate);

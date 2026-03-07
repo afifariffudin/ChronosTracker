@@ -16,6 +16,10 @@ public class IGDBGame
     public IGDBNestedItem collection { get; set; }
     public List<IGDBNestedItem> franchises { get; set; }
     public IGDBNestedItem parent_game { get; set; }
+    public double? total_rating { get; set; }
+    public int? total_rating_count { get; set; }
+    public int? hypes { get; set; }
+
 
     [JsonProperty("external_games")]
     public List<IGDBExternalGame> external_games { get; set; } = new();
@@ -35,6 +39,23 @@ public class IGDBGame
         .FirstOrDefault(x => x.external_game_source == 26)?
         .url;
 
+    [JsonIgnore]
+    public double WorthinessScore
+    {
+        get
+        {
+            if (!total_rating.HasValue || (total_rating_count ?? 0) == 0)
+                return 50.0;
+
+            double rawScore = total_rating.Value / 100.0;
+            int count = total_rating_count.Value;
+
+            double score = rawScore - (rawScore - 0.5) * Math.Pow(2, -Math.Log10(count + 1));
+
+            return Math.Round(score * 100, 1);
+        }
+    }
+
     public DateTime? ReleaseDate => first_release_date.HasValue
         ? DateTimeOffset.FromUnixTimeSeconds(first_release_date.Value).DateTime
         : null;
@@ -45,9 +66,6 @@ public class IGDBExternalGame
 
     [JsonProperty("external_game_source")]
     public int external_game_source { get; set; }
-
-    [JsonProperty("uid")]
-    public string? uid { get; set; }
 
     [JsonProperty("url")]
     public string? url { get; set; }

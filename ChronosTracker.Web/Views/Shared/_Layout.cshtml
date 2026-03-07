@@ -15,24 +15,13 @@
         <nav class="navbar navbar-expand-sm navbar-dark border-bottom border-secondary box-shadow mb-3"
              style="background-color: #1a1a1a !important;">
             <div class="container-fluid px-4">
-                <a class="navbar-brand fw-bold" asp-area="" asp-controller="Home" asp-action="Index">
+                <a class="navbar-brand fw-bold" asp-area="" asp-controller="Games" asp-action="Browse">
                     <span style="color: var(--accent-purple, #bb86fc)">Chronos</span>Tracker
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-light" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-light" asp-controller="Games" asp-action="Index">My Library</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-light" asp-controller="Games" asp-action="Browse">Browse Archive</a>
-                        </li>
-                    </ul>
+
                     <ul class="navbar-nav">
                         <li class="nav-item">
                             <a class="nav-link text-muted" asp-controller="Games" asp-action="HardwareProfile">

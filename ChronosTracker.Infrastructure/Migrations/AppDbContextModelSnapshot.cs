@@ -40,67 +40,35 @@ namespace ChronosTracker.Infrastructure.Migrations
                     b.Property<DateTime?>("DateStarted")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Developer")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Genre")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("FranchiseName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int?>("IGDBId")
                         .HasColumnType("int");
 
-                    b.Property<bool>("IsSinglePlayer")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("PlayStatus")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("PopularityScore")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Publisher")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime?>("ReleaseDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("SeriesID")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("SeriesName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<string>("SteamAppId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<double?>("SteamRating")
-                        .HasColumnType("float");
-
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SeriesID");
+                    b.HasIndex("IGDBId")
+                        .IsUnique()
+                        .HasFilter("[IGDBId] IS NOT NULL");
 
                     b.ToTable("Games");
-                });
-
-            modelBuilder.Entity("ChronosTracker.Core.Entities.Series", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Series");
                 });
 
             modelBuilder.Entity("ChronosTracker.Core.Entities.UserSettings", b =>
@@ -118,20 +86,6 @@ namespace ChronosTracker.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("UserSettings");
-                });
-
-            modelBuilder.Entity("ChronosTracker.Core.Entities.Game", b =>
-                {
-                    b.HasOne("ChronosTracker.Core.Entities.Series", "Series")
-                        .WithMany("Games")
-                        .HasForeignKey("SeriesID");
-
-                    b.Navigation("Series");
-                });
-
-            modelBuilder.Entity("ChronosTracker.Core.Entities.Series", b =>
-                {
-                    b.Navigation("Games");
                 });
 #pragma warning restore 612, 618
         }
