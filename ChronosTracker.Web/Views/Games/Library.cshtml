@@ -1,0 +1,420 @@
+﻿@using ChronosTracker.Core.Entities
+@using System.Web
+@model List<Game>
+
+@{
+    ViewData["Title"] = "My Game Library";
+}
+
+<style>
+    :root {
+        --bg-deep: #0f0f0f;
+        --surface-card: #1a1a1a;
+        --accent-purple: #bb86fc;
+        --accent-teal: #03dac6;
+        --border-soft: #2c2c2c;
+        --text-muted: #a0a0a0;
+    }
+
+    body {
+        background-color: var(--bg-deep);
+        color: #e0e0e0;
+        overflow: hidden;
+    }
+
+    .table-responsive {
+        height: 85vh;
+        overflow: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-soft) transparent;
+    }
+
+    /* 1. Sticky Header */
+    .table-archive thead th {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background-color: #252525 !important;
+        border-bottom: 2px solid var(--border-soft);
+        color: var(--accent-purple);
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    thead th.sticky-action {
+        z-index: 30;
+        top: 0;
+        right: 0;
+        background-color: #252525 !important;
+    }
+
+    /* 2. Sticky Action Column */
+    .sticky-action {
+        position: sticky;
+        right: 0;
+        background-color: #1a1a1a !important;
+        z-index: 10;
+        border-left: 1px solid var(--border-soft);
+    }
+
+    /* 3. Table Styling */
+    .table-archive {
+        font-size: 0.85rem;
+        background-color: transparent !important;
+    }
+
+        .table-archive tbody tr {
+            border-bottom: 1px solid var(--border-soft);
+            transition: 0.2s;
+        }
+
+            .table-archive tbody tr:hover {
+                background-color: #242424 !important;
+            }
+
+    .game-summary-scroll {
+        max-height: 85px;
+        overflow-y: auto;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        padding-right: 10px;
+        color: var(--text-muted);
+    }
+
+    .game-cover {
+        width: 55px;
+        height: 75px;
+        object-fit: cover;
+        border-radius: 6px;
+        border: 1px solid var(--border-soft);
+    }
+
+    .badge-platform {
+        background: rgba(187, 134, 252, 0.1);
+        color: var(--accent-purple);
+        border: 1px solid rgba(187, 134, 252, 0.3);
+    }
+
+    .badge-genre {
+        background: rgba(3, 218, 198, 0.1);
+        color: var(--accent-teal);
+        border: 1px solid rgba(3, 218, 198, 0.3);
+    }
+
+    #sidebarCollapse {
+        transition: all 0.3s ease;
+        background: var(--surface-card);
+        border-right: 1px solid var(--border-soft);
+    }
+
+    .page-indicator {
+        min-width: 90px;
+        text-align: center;
+        border-left: 1px solid var(--border-soft);
+        border-right: 1px solid var(--border-soft);
+    }
+
+    /* Steam Link Interaction */
+    .hover-purple:hover {
+        color: var(--accent-purple) !important;
+    }
+
+    .worth-meter {
+        border: 1px solid var(--border-soft);
+        border-radius: 8px;
+        padding: 4px;
+        text-align: center;
+        min-width: 65px;
+    }
+
+    .worth-high {
+        border-color: var(--accent-teal);
+        color: var(--accent-teal);
+    }
+
+    .popular-flame {
+        color: #ff5f00;
+        margin-left: 4px;
+        filter: drop-shadow(0 0 2px rgba(255,95,0,0.5));
+    }
+
+    /* Finished Game Gray-out */
+    .is-finished {
+        opacity: 0.3;
+        filter: grayscale(100%);
+        transition: 0.4s;
+    }
+
+        .is-finished:hover {
+            opacity: 0.7;
+            filter: grayscale(20%);
+        }
+</style>
+
+<div class="container-fluid px-4 mt-2">
+    <div class="d-flex justify-content-between align-items-center mb-3 bg-dark p-2 rounded border border-secondary shadow-sm">
+        <div class="d-flex align-items-center gap-3">
+            <h5 class="mb-0 fw-bold ps-3 text-uppercase" style="color:var(--accent-teal)">My Library</h5>
+
+            <div class="form-check form-switch pt-1 ms-3">
+                <input class="form-check-input" type="checkbox" id="hideFinishedToggle" onchange="toggleFinishedRows()">
+                <label class="form-check-label small fw-bold text-success mb-0" for="hideFinishedToggle">Hide Finished</label>
+            </div>
+
+            <div class="form-check form-switch pt-1">
+                <input class="form-check-input" type="checkbox" id="showHiddenToggle" onchange="toggleHiddenRows()">
+                <label class="form-check-label small fw-bold text-danger mb-0" for="showHiddenToggle">Show Hidden</label>
+            </div>
+        </div>
+
+        <div class="me-3">
+            <span class="badge bg-secondary">Total: @Model.Count</span>
+        </div>
+    </div>
+
+    <div class="row g-0">
+        <div class="col px-3">
+            <div class="card shadow-lg border-0 overflow-hidden" style="background:transparent">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 table-archive">
+                        <thead>
+                            <tr class="small">
+                                <th class="text-center align-middle sticky-action px-3" style="width:120px;">ACTION</th>
+                                <th class="col-date ps-3 text-center align-middle">RELEASE</th>
+                                <th class="text-center align-middle">COVER</th>
+                                <th class="col-details text-center align-middle">GAME DETAILS</th>
+                                <th class="text-center align-middle">DEVELOPER</th>
+                                <th class="text-center align-middle">GENRES</th>
+                                <th class="text-center align-middle">PARENT GAME</th>
+                                <th class="text-center align-middle">SERIES</th>
+                                <th class="text-center align-middle">FRANCHISE</th>
+                                <th class="text-center align-middle">PLATFORMS</th>
+                                <th class="text-center align-middle" style="width: 100px;">WORTH</th>
+                                <th class="text-center align-middle" style="width:150px;">START</th>
+                                <th class="text-center align-middle" style="width:150px;">FINISH</th>
+                                <th class="text-center align-middle" style="width:120px;">PLAY STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var game in Model)
+                            {
+                                // 1. Logic for Play Status badges
+                                var playStatus = "Shelf";
+                                var statusClass = "text-muted opacity-50";
+
+                                if (game.DateStarted.HasValue && game.DateFinished.HasValue)
+                                {
+                                    playStatus = "Finished";
+                                    statusClass = "text-success fw-bold";
+                                }
+                                else if (game.DateStarted.HasValue)
+                                {
+                                    playStatus = "Playing";
+                                    statusClass = "text-warning fw-bold";
+                                }
+
+                                // 2. Prepare safe strings for JS call
+                                var safeTitle = HttpUtility.JavaScriptStringEncode(game.Title);
+                                var safeSummary = HttpUtility.JavaScriptStringEncode(game.Summary ?? "");
+                                var safeDev = HttpUtility.JavaScriptStringEncode(game.Developer ?? "");
+                                var safeSeries = HttpUtility.JavaScriptStringEncode(game.SeriesName ?? "");
+                                var safeFranchise = HttpUtility.JavaScriptStringEncode(game.FranchiseName ?? "");
+                                var safeParent = HttpUtility.JavaScriptStringEncode(game.ParentGameTitle ?? "");
+
+                                <tr id="row_@game.IGDBId"
+                                    class="@(game.Status == 2 ? "d-none is-hidden-row" : "") @(playStatus == "Finished" ? "is-finished-row" : "")"
+                                    style="@(game.Status == 2 ? "opacity: 0.3;" : "")">
+
+                                    @* ACTION *@
+                                    <td class="text-center sticky-action px-3">
+                                        <div class="btn-group btn-group-sm">
+                                            @* Move back to Archive (Status 0) *@
+                                            <button class="btn btn-outline-danger" title="Remove from Library"
+                                                    onclick="updateStatus(@game.IGDBId, '@safeTitle', '@game.Slug', '@game.CoverUrl', '@game.IGDBUrl', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDev', '@game.Genres', '@game.Platforms', '@safeSeries', '@safeFranchise', '@safeParent', @(game.WorthinessScore ?? 0), @game.SupportsEnglish.ToString().ToLower(), '@game.SteamUrl', '@game.GogUrl', '@game.EpicUrl', 0)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            @* Hide (Status 2) *@
+                                            <button class="btn btn-outline-secondary" title="Hide Game"
+                                                    onclick="updateStatus(@game.IGDBId, '@safeTitle', '@game.Slug', '@game.CoverUrl', '@game.IGDBUrl', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDev', '@game.Genres', '@game.Platforms', '@safeSeries', '@safeFranchise', '@safeParent', @(game.WorthinessScore ?? 0), @game.SupportsEnglish.ToString().ToLower(), '@game.SteamUrl', '@game.GogUrl', '@game.EpicUrl', 2)">
+                                                <i class="bi bi-eye-slash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+
+                                @* RELEASE *@
+                                    <td class="text-center text-nowrap fw-bold px-3">@game.ReleaseDate?.ToString("dd-MMM-yyyy")</td>
+
+                                @* COVER *@
+                                    <td class="text-center">
+                                        @if (!string.IsNullOrEmpty(game.CoverUrl))
+                                        {
+                                            <img src="@game.CoverUrl" class="game-cover" />
+                                        }
+                                    </td>
+
+                                    @* GAME DETAILS *@
+                                    <td>
+                                        <div class="d-flex justify-content-between align-items-start w-100 mb-2">
+                                            <a href="@(game.IGDBUrl ?? "#")" target="_blank" class="fw-bold text-light text-decoration-none hover-purple fs-5">
+                                                @game.Title
+                                            </a>
+
+                                            <div class="d-flex gap-2 ms-3 flex-shrink-0">
+                                                @if (!string.IsNullOrEmpty(game.SteamUrl))
+                                                {
+                                                    <a href="@game.SteamUrl" target="_blank" class="text-info opacity-75"><i class="fa-brands fa-steam"></i></a>
+                                                }
+                                                @if (!string.IsNullOrEmpty(game.GogUrl))
+                                                {
+                                                    <a href="@game.GogUrl" target="_blank" style="color: #b245ff;" class="opacity-75"><i class="fa-solid fa-g"></i></a>
+                                                }
+                                                @if (!string.IsNullOrEmpty(game.EpicUrl))
+                                                {
+                                                    <a href="@game.EpicUrl" target="_blank" class="text-white opacity-75"><i class="fa-solid fa-e" style="border: 1px solid white; padding: 0 3px; border-radius: 3px; font-size: 0.8rem;"></i></a>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="game-summary-scroll">@game.Summary</div>
+                                    </td>
+
+                                    @* DEVELOPER *@
+                                    <td class="small text-muted text-center">@game.Developer</td>
+
+                                    @* GENRES *@
+                                    <td>
+                                        @foreach (var g in (game.Genres ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                        {
+                                            <span class="badge badge-genre">@g.Trim()</span>
+                                        }
+                                    </td>
+
+                                    @* PARENT GAME *@
+                                    <td class="small text-muted text-center">
+                                        @if (game.ParentGameTitle != null)
+                                        {
+                                            @game.ParentGameTitle
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+
+                                    @* SERIES *@
+                                    <td class="small text-muted text-center">
+                                        @if (game.SeriesName != null)
+                                        {
+                                            @game.SeriesName
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+
+                                    @* FRANCHISE *@
+                                    <td class="small text-muted text-center">
+                                        @if (game.FranchiseName != null)
+                                        {
+                                            @game.FranchiseName
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+
+                                    @* PLATFORMS *@
+                                    <td>
+                                        @foreach (var p in (game.Platforms ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                        {
+                                            <span class="badge badge-platform">@p.Trim()</span>
+                                        }
+                                    </td>
+
+                                    @* WORTH *@
+                                    <td class="text-center">
+                                        <div class="worth-meter @(game.WorthinessScore > 80 ? "worth-high" : "")">
+                                            <div class="fw-bold">@game.WorthinessScore%</div>
+                                        </div>
+                                    </td>
+
+                                    @* START DATE *@
+                                    <td>
+                                        <input type="date" class="form-control form-control-sm bg-dark text-light border-secondary"
+                                               value="@(game.DateStarted?.ToString("yyyy-MM-dd"))"
+                                               onchange="updateDate(@game.IGDBId, 'start', this.value)" />
+                                    </td>
+
+                                    @* FINISH DATE *@
+                                    <td>
+                                        <input type="date" class="form-control form-control-sm bg-dark text-light border-secondary"
+                                               value="@(game.DateFinished?.ToString("yyyy-MM-dd"))"
+                                               onchange="updateDate(@game.IGDBId, 'finish', this.value)" />
+                                    </td>
+
+                                    @* PLAY STATUS *@
+                                    <td class="text-center small @statusClass">@playStatus.ToUpper()</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function updateStatus(id, title, slug, cover, url, summary, date, developer, genres, platforms, series, franchise, parent, score, supportsEnglish, steam, gog, epic, status) {
+                    $.post('/Games/UpdateStatus', {
+                        igdbId: id,
+                        title: title,
+                        slug: slug,
+                        coverUrl: cover,
+                        igdbUrl: url,
+                        summary: summary,
+                        releaseDate: date,
+                        developer: developer,
+                        genres: genres,
+                        platforms: platforms,
+                        seriesName: series,
+                        franchiseName: franchise,
+                        parentGameTitle: parent,
+                        worthinessScore: score,
+                        supportsEnglish: supportsEnglish,
+                        steamUrl: steam,
+                        gogUrl: gog,
+                        epicUrl: epic,
+                        status: status
+                    }, function (res) {
+                        if (res.success) {
+                            location.reload();
+                        }
+                    });
+                }
+
+        function updateDate(id, type, dateValue) {
+                    $.post('/Games/UpdateDates', {
+                        igdbId: id,
+                        type: type,
+                        date: dateValue
+                    }, function (res) {
+                        if (res.success) { location.reload(); }
+                        else { alert(res.message); }
+                    });
+                }
+
+        function toggleHiddenRows() {
+                    const isChecked = $('#showHiddenToggle').is(':checked');
+                    $('.is-hidden-row').toggleClass('d-none', !isChecked);
+                }
+
+        function toggleFinishedRows() {
+                    const shouldHide = $('#hideFinishedToggle').is(':checked');
+                    $('.is-finished-row').toggleClass('d-none', shouldHide);
+                }
+
+    </script>
+}

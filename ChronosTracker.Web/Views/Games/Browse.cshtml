@@ -307,26 +307,34 @@
  
                                     @* ACTION *@
                                     <td class="text-center sticky-action px-3">
-                                        <div id="actions_@game.id" class="btn-group btn-group-sm">
-                                            @if (s == 2)
-                                            {
-                                                <button class="btn btn-warning" onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 0)"><i class="bi bi-arrow-counterclockwise"></i></button>
-                                            }
-                                            else
-                                            {
-                                                @* Add/Interested Button *@
-                                                <button class="btn @(s == 1 ? "btn-success" : "btn-outline-success")" style="@(s == 1 ? "" : "color:var(--accent-teal); border-color:var(--accent-teal)")"
-                                                        onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 1, '@safeSeries', '@safeFranchise', @game.SupportsEnglish.ToString().ToLower())">
-                                                    <i class="bi @(s == 1 ? "bi-check-circle-fill" : "bi-plus-circle")"></i>
-                                                </button>
-                                                @* Hide Button *@
-                                                <button class="btn btn-outline-danger"
-                                                        onclick="updateStatus(@game.id, '@safeTitle', '@cover', '@game.ReleaseDate', 2, '@safeSeries', '@safeFranchise', @game.SupportsEnglish.ToString().ToLower())">
-                                                    <i class="bi bi-eye-slash"></i>
-                                                </button>
-                                            }
-                                        </div>
-                                    </td>
+                                    @{
+                                        // Prepare complex strings for the Controller
+                                        var safeSummary = HttpUtility.JavaScriptStringEncode(game.summary ?? "");
+                                        var safeDeveloper = HttpUtility.JavaScriptStringEncode(game.involved_companies != null 
+                                            ? string.Join(", ", game.involved_companies.Where(c => c.developer).Select(c => c.company.name)) 
+                                            : "-");
+                                        var safeGenres = HttpUtility.JavaScriptStringEncode(game.genres != null 
+                                            ? string.Join(", ", game.genres.Select(g => g.name)) 
+                                            : "");
+                                        var safePlatforms = HttpUtility.JavaScriptStringEncode(game.platforms != null 
+                                            ? string.Join(", ", game.platforms.Select(p => p.name)) 
+                                            : "");
+                                        var safeParent = HttpUtility.JavaScriptStringEncode(game.parent_game?.name ?? "");
+                                    }
+
+                                    <div id="actions_@game.id" class="btn-group btn-group-sm">
+                                        @* Status Logic: 0 = Archive, 1 = Library, 2 = Hidden *@
+                                        <button class="btn @(s == 1 ? "btn-success" : "btn-outline-success")" 
+                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', 1)">
+                                            <i class="bi @(s == 1 ? "bi-check-circle-fill" : "bi-plus-circle")"></i>
+                                        </button>
+
+                                        <button class="btn btn-outline-danger"
+                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), 2)">
+                                            <i class="bi bi-eye-slash"></i>
+                                        </button>
+                                    </div>
+                                </td>
 
                                 @* RELEASE *@
                                     <td class="text-center text-nowrap fw-bold px-3">@game.ReleaseDate?.ToString("dd-MMM-yyyy")</td>
@@ -523,32 +531,39 @@
             sidebar.addEventListener('hidden.bs.collapse', () => localStorage.setItem('sidebarState', 'closed'));
         });
 
-        function updateStatus(id, title, cover, date, status, series, franchise, supportsEnglish) {
-                    $.post('/Games/UpdateStatus', {
-                        igdbId: id,
-                        title: title,
-                        coverUrl: cover,
-                        releaseDate: date,
-                        status: status,
-                        seriesname : series,
-                        franchisename : franchise,
-                        supportsEnglish: supportsEnglish
-                    }, function (res) {
-                        if (res.success) {
-                            const row = $(`#row_${id}`);
-
-                            if (status == 2) {
-                                // Visual 'Hide' logic
-                                row.addClass('is-hidden-row').css('opacity', '0.3');
-                                if (!$('#showHiddenToggle').is(':checked')) {
-                                    row.fadeOut(300);
-                                }
-                            } else {
-                                location.reload();
-                            }
-                        }
-                    });
+        function updateStatus(id, title, slug, cover, url, summary, date, developer, genres, platforms, series, franchise, parent, score, supportsEnglish, steam, gog, epic, status) {
+            $.post('/Games/UpdateStatus', {
+                igdbId: id,
+                title: title,
+                slug: slug,
+                coverUrl: cover,
+                igdbUrl: url,
+                steamUrl: steam,
+                gogUrl : gog,
+                epicUrl: epic,
+                summary: summary,
+                releaseDate: date,
+                developer: developer,
+                genres: genres,
+                platforms: platforms,
+                seriesName: series,
+                franchiseName: franchise,
+                parentGameTitle: parent,
+                supportsEnglish: supportsEnglish,
+                worthinessScore: score,
+                status: status
+            }, function (res) {
+                if (res.success) {
+                    if (status == 2) {
+                        const row = $(`#row_${id}`);
+                        row.addClass('is-hidden-row').css('opacity', '0.3');
+                        if (!$('#showHiddenToggle').is(':checked')) { row.fadeOut(300); }
+                    } else {
+                        location.reload(); 
+                    }
                 }
+            });
+        }
 
         function toggleHiddenRows() {
             // 1. Get the True/False state of the switch

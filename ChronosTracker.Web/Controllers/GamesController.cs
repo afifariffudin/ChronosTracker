@@ -2,6 +2,7 @@
 using ChronosTracker.Infrastructure.Data;
 using ChronosTracker.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChronosTracker.Web.Controllers;
@@ -37,7 +38,7 @@ public class GamesController : Controller
             // 2. Get ALL IDs from your local DB to exclude (Hidden, Interested, etc.)
             // This is key to ensuring the API doesn't return things you've already processed
             var interactedIds = await _context.Games
-                .Where(g => g.Status == 2)
+                .Where(g => g.Status != 0)
                 .Select(g => g.IGDBId)
                 .Where(id => id.HasValue)
                 .Cast<int>()
@@ -85,6 +86,19 @@ public class GamesController : Controller
             return Content($"The Game Archive is currently unavailable. Error: {ex.Message}");
         }
     }
+
+    public async Task<IActionResult> Library()
+    {
+        // This is like a 'Filtered View' of your local tracker sheet
+        var myLibrary = await _context.Games
+            .Where(g => g.Status == 1)
+            .OrderBy(g => g.ReleaseDate)
+            .ThenBy(g => g.Title)
+            .ToListAsync();
+
+        return View(myLibrary);
+    }
+
     public async Task<IActionResult> HardwareProfile()
     {
         var platforms = await _igdbService.GetPlatformsAsync();
@@ -119,7 +133,32 @@ public class GamesController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> UpdateStatus(int igdbId, string title, string coverUrl, string releaseDate, int status, string? seriesname, string? franchisename, bool supportsEnglish)
+    public async Task<IActionResult> UpdateStatus(
+        // Identity
+        int igdbId,
+        string title,
+        string? slug,
+        // Links & Media
+        string? coverUrl,
+        string? igdbUrl,
+        string? steamUrl,
+        string? gogUrl,
+        string? epicUrl,
+        // Game Details
+        string? summary,
+        string? releaseDate,
+        string? developer,
+        string? genres,
+        string? platforms,
+        string? seriesName,
+        string? franchiseName,
+        string? parentGameTitle,
+        bool supportsEnglish,
+        // Ratings
+        double? worthinessScore,
+        // User Tracking
+        int status)
+
     {
         var game = await _context.Games.FirstOrDefaultAsync(g => g.IGDBId == igdbId);
 
@@ -130,11 +169,22 @@ public class GamesController : Controller
                 Id = Guid.NewGuid(),
                 IGDBId = igdbId,
                 Title = title,
+                Slug = slug,
                 CoverUrl = coverUrl,
-                Status = status,
-                SeriesName = seriesname,
-                FranchiseName = franchisename,
+                IGDBUrl = igdbUrl,
+                SteamUrl = steamUrl,
+                GogUrl = gogUrl,
+                EpicUrl = epicUrl,
+                Summary = summary,
+                Developer = developer,
+                Genres = genres,
+                Platforms = platforms,
+                SeriesName = seriesName,
+                FranchiseName = franchiseName,
+                ParentGameTitle = parentGameTitle,
+                WorthinessScore = worthinessScore,
                 SupportsEnglish = supportsEnglish,
+                Status = status,
                 DateCreated = DateTime.UtcNow
             };
 
@@ -149,17 +199,24 @@ public class GamesController : Controller
             if (game.Status == status)
             {
                 game.Status = 0;
-                game.DateStarted = null;
-                game.DateFinished = null;
-                game.SeriesName = null;
-                game.FranchiseName = null;
             }
             else
             {
-                game.Status = status;
-                game.SeriesName = seriesname;
-                game.FranchiseName = franchisename;
+                if (DateTime.TryParse(releaseDate, out DateTime rDate))
+                {
+                    game.ReleaseDate = rDate;
+                }
+                game.CoverUrl = coverUrl;
+                game.SteamUrl = steamUrl;
+                game.GogUrl = gogUrl;
+                game.EpicUrl = epicUrl;
+                game.Platforms = platforms;
+                game.SeriesName = seriesName;
+                game.FranchiseName = franchiseName;
+                game.ParentGameTitle = parentGameTitle;
+                game.WorthinessScore = worthinessScore;
                 game.SupportsEnglish = supportsEnglish;
+                game.Status = status;
             }
         }
 
@@ -185,7 +242,6 @@ public class GamesController : Controller
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {
-        // In VBA, this is your central error logging area
         return View();
     }
 }

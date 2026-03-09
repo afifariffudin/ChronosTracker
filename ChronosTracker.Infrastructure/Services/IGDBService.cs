@@ -44,7 +44,7 @@ public class IGDBService
         _httpClient.DefaultRequestHeaders.Add("Client-ID", clientId);
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
 
-        string fieldList = "fields name, url, summary, first_release_date, cover.url, " +
+        string fieldList = "fields name, slug, url, summary, first_release_date, cover.url, " +
                            "platforms.name, genres.name, " +
                            "involved_companies.developer, involved_companies.company.name, " +
                            "collections.name, franchises.name, parent_game.name, " +
