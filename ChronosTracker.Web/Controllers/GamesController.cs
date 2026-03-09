@@ -135,7 +135,7 @@ public class GamesController : Controller
     [HttpPost]
     public async Task<IActionResult> UpdateStatus(
         // Identity
-        int igdbId,
+        int? igdbId,
         string title,
         string? slug,
         // Links & Media
@@ -202,6 +202,8 @@ public class GamesController : Controller
             }
             else
             {
+                game.Status = status;
+
                 if (DateTime.TryParse(releaseDate, out DateTime rDate))
                 {
                     game.ReleaseDate = rDate;
@@ -216,7 +218,7 @@ public class GamesController : Controller
                 game.ParentGameTitle = parentGameTitle;
                 game.WorthinessScore = worthinessScore;
                 game.SupportsEnglish = supportsEnglish;
-                game.Status = status;
+
             }
         }
 
