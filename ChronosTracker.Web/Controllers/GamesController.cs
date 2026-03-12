@@ -46,7 +46,7 @@ public class GamesController : Controller
 
             // 3. Fetch a "Big Bucket" (250) from IGDB starting from lastTimestamp
             // We fetch more than we need so we have enough leftovers after filtering
-            var bigBatch = await _igdbService.GetBrowseGamesAsync(250, platformIds, searchTerm, lastTimestamp);
+            var bigBatch = await _igdbService.GetBrowseGamesAsync(500, platformIds, searchTerm, lastTimestamp);
 
             // 4. Filter the Big Batch in memory against your local database
             var filteredGames = bigBatch
