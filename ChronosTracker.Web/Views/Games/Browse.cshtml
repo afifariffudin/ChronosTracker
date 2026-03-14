@@ -265,11 +265,11 @@
                                 <th class="col-details text-center align-middle">GAME DETAILS</th>
                                 <th class="text-center align-middle">DEVELOPER</th>
                                 <th class="text-center align-middle">GENRES</th>
+                                <th class="text-center align-middle" style="width: 100px;">WORTH</th>
                                 <th class="text-center align-middle">PARENT GAME</th>
                                 <th class="text-center align-middle">SERIES</th>
                                 <th class="text-center align-middle">FRANCHISE</th>
                                 <th class="text-center align-middle">PLATFORMS</th>
-                                <th class="text-center align-middle" style="width: 100px;">WORTH</th>
                                 <th class="text-center align-middle" style="width:150px;">START</th>
                                 <th class="text-center align-middle" style="width:150px;">FINISH</th>
                                 <th class="text-center align-middle" style="width:120px;">PLAY STATUS</th>
@@ -395,7 +395,7 @@
                                     </td>
 
                                     @* DEVELOPER *@
-                                    <td class="small text-muted">@(game.involved_companies != null ? string.Join(", ", game.involved_companies.Where(c => c.developer).Select(c => c.company.name)) : "-")</td>
+                                    <td>@(game.involved_companies != null ? string.Join(", ", game.involved_companies.Where(c => c.developer).Select(c => c.company.name)) : "-")</td>
 
                                     @* GENRES *@
                                     <td>
@@ -406,6 +406,18 @@
                                                 {
                                                     <span class="badge badge-genre" style="font-size:0.65rem;">@g.name</span>
                                                 }
+                                            }
+                                        </div>
+                                    </td>
+
+                                    @* WORTH *@
+                                    <td class="text-center">
+                                        <div class="worth-meter @(game.WorthinessScore > 80 ? "worth-high" : "")">
+                                            <div class="fw-bold">@game.WorthinessScore%</div>
+                                            <div style="font-size: 0.6rem;" class="text-muted">n=@game.total_rating_count</div>
+                                            @if ((game.hypes ?? 0) > 50)
+                                            {
+                                                <i class="bi bi-fire popular-flame" title="High Popularity (Hype)"></i>
                                             }
                                         </div>
                                     </td>
@@ -475,18 +487,6 @@
                                                 {
                                                     <span class="badge badge-platform" style="font-size:0.65rem;">@pl.name</span>
                                                 }
-                                            }
-                                        </div>
-                                    </td>
-
-                                    @* WORTH *@
-                                    <td class="text-center">
-                                        <div class="worth-meter @(game.WorthinessScore > 80 ? "worth-high" : "")">
-                                            <div class="fw-bold">@game.WorthinessScore%</div>
-                                            <div style="font-size: 0.6rem;" class="text-muted">n=@game.total_rating_count</div>
-                                            @if ((game.hypes ?? 0) > 50)
-                                            {
-                                                <i class="bi bi-fire popular-flame" title="High Popularity (Hype)"></i>
                                             }
                                         </div>
                                     </td>

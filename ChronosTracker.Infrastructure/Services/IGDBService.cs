@@ -96,14 +96,14 @@ public class IGDBService
         long startTimestamp = !string.IsNullOrEmpty(searchTerm) ? 0 : (lastTimestamp ?? 0);
         string where = $"where first_release_date >= {startTimestamp} & first_release_date != null";
 
-        if (onlyEnglish)
-        {
-            where += " & (" +
-                             "(language_supports.language = 12 & language_supports.language_support_type = 3) | " +
-                             "(language_supports.language = 12 & language_supports.language_support_type = 2) | " +
-                             "language_supports = null" +
-                             ")";
-        }
+        //if (onlyEnglish)
+        //{
+        //    where += " & (" +
+        //                     "(language_supports.language = 12 & language_supports.language_support_type = 3) | " +
+        //                     "(language_supports.language = 12 & language_supports.language_support_type = 2) | " +
+        //                     "language_supports = null" +
+        //                     ")";
+        //}
 
         if (!string.IsNullOrEmpty(searchTerm))
         {
