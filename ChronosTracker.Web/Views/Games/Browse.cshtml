@@ -148,17 +148,6 @@
         filter: drop-shadow(0 0 2px rgba(255,95,0,0.5));
     }
 
-    /* Finished Game Gray-out */
-    .is-finished {
-        opacity: 0.3;
-        filter: grayscale(100%);
-        transition: 0.4s;
-    }
-
-        .is-finished:hover {
-            opacity: 0.7;
-            filter: grayscale(20%);
-        }
 </style>
 
         <div class="container-fluid px-4 mt-2">
@@ -216,11 +205,6 @@
             </form>
         </div>
 
-        <div class="form-check form-switch pt-1 ms-3">
-            <input class="form-check-input" type="checkbox" id="hideFinishedToggle" onchange="toggleFinishedRows()">
-            <label class="form-check-label small fw-bold text-success mb-0" for="hideFinishedToggle">Hide Finished</label>
-        </div>
-
         <div class="d-flex align-items-center gap-3">
             <div class="form-check form-switch pt-1">
                 <input class="form-check-input" type="checkbox" id="showHiddenToggle" onchange="toggleHiddenRows()">
@@ -263,16 +247,13 @@
                                 <th class="col-date ps-3 text-center align-middle">RELEASE</th>
                                 <th class="text-center align-middle">COVER</th>
                                 <th class="col-details text-center align-middle">GAME DETAILS</th>
+                                <th class="text-center align-middle" style="width: 100px;">WORTH</th>
                                 <th class="text-center align-middle">DEVELOPER</th>
                                 <th class="text-center align-middle">GENRES</th>
-                                <th class="text-center align-middle" style="width: 100px;">WORTH</th>
                                 <th class="text-center align-middle">PARENT GAME</th>
                                 <th class="text-center align-middle">SERIES</th>
                                 <th class="text-center align-middle">FRANCHISE</th>
                                 <th class="text-center align-middle">PLATFORMS</th>
-                                <th class="text-center align-middle" style="width:150px;">START</th>
-                                <th class="text-center align-middle" style="width:150px;">FINISH</th>
-                                <th class="text-center align-middle" style="width:120px;">PLAY STATUS</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -281,31 +262,18 @@
                                 var safeTitle = HttpUtility.JavaScriptStringEncode(game.name ?? "");
                                 var safeSeries = HttpUtility.JavaScriptStringEncode(game.collections?.FirstOrDefault()?.name ?? "");
                                 var safeFranchise = HttpUtility.JavaScriptStringEncode(game.franchises?.FirstOrDefault()?.name ?? "");
-                                var startDate = localDatesStarted.GetValueOrDefault(game.id);
-                                var finishDate = localDatesFinished.GetValueOrDefault(game.id);
-
-                                string playStatus = "Shelf";
-                                string statusClass = "text-muted opacity-50";
-
-                                if (startDate.HasValue && finishDate.HasValue)
-                                {
-                                    playStatus = "Finished";
-                                    statusClass = "text-success fw-bold";
-                                }
-                                else if (startDate.HasValue)
-                                {
-                                    playStatus = "Playing";
-                                    statusClass = "text-warning fw-bold";
-                                }
 
                                 int s = localStatuses.GetValueOrDefault(game.id, 0);
+                                var isFinished = s == 3 || (localDatesStarted.GetValueOrDefault(game.id).HasValue && localDatesFinished.GetValueOrDefault(game.id).HasValue);
+
                                 var cover = !string.IsNullOrEmpty(game.cover?.url) ? "https:" + game.cover.url.Replace("t_thumb", "t_cover_big") : "";
 
                                 <tr id="row_@game.id" 
-                                    class="@(s == 2 ? "d-none is-hidden-row" : "") @(playStatus == "Finished" ? "is-finished-row" : "")"
+                                    class="@(s == 2 ? "d-none is-hidden-row" : "") @(isFinished ? "is-finished" : "")"
                                     style="@(s == 2 ? "opacity: 0.3;" : "")">
  
                                     @* ACTION *@
+                                    @* Status Logic: 0 = Archive, 1 = Library, 2 = Hidden, 3 = Finished *@
                                     <td class="text-center sticky-action px-3">
                                     @{
                                         // Prepare complex strings for the Controller
@@ -323,18 +291,29 @@
                                     }
 
                                     <div id="actions_@game.id" class="btn-group btn-group-sm">
-                                        @* Status Logic: 0 = Archive, 1 = Library, 2 = Hidden *@
-                                        <button class="btn @(s == 1 ? "btn-success" : "btn-outline-success")" 
-                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', 1)">
-                                            <i class="bi @(s == 1 ? "bi-check-circle-fill" : "bi-plus-circle")"></i>
+                                        @* Add/Library Button (Status 1) *@
+                                        <button class="btn @(s == 1 || s == 3 ? "btn-success" : "btn-outline-success")" 
+                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', 1)">
+                                            <i class="bi @(s == 1 || s == 3 ? "bi-check-circle-fill" : "bi-plus-circle")"></i>
                                         </button>
 
+                                        @* Hide Button (Status 2) *@
                                         <button class="btn btn-outline-danger"
-                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', 2)">
+                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', 2)">
                                             <i class="bi bi-eye-slash"></i>
                                         </button>
+
+                                        @* Quick Finish Button (Status 3) *@
+                                        @if (!isFinished)
+                                        {
+                                            <button id="qf_@game.id" class="btn btn-outline-info" title="Quick Finish" onclick="quickFinish(@game.id)">
+                                                <i class="bi bi-check-all"></i>
+                                            </button>
+                                        }
                                     </div>
                                 </td>
+
+
 
                                 @* RELEASE *@
                                     <td class="text-center text-nowrap fw-bold px-3">@game.ReleaseDate?.ToString("dd-MMM-yyyy")</td>
@@ -394,6 +373,18 @@
                                         </div>
                                     </td>
 
+                                    @* WORTH *@
+                                    <td class="text-center">
+                                        <div class="worth-meter @(game.WorthinessScore > 80 ? "worth-high" : "")">
+                                            <div class="fw-bold">@game.WorthinessScore%</div>
+                                            <div style="font-size: 0.6rem;" class="text-muted">n=@game.total_rating_count</div>
+                                            @if ((game.hypes ?? 0) > 50)
+                                            {
+                                                <i class="bi bi-fire popular-flame" title="High Popularity (Hype)"></i>
+                                            }
+                                        </div>
+                                    </td>
+
                                     @* DEVELOPER *@
                                     <td>@(game.involved_companies != null ? string.Join(", ", game.involved_companies.Where(c => c.developer).Select(c => c.company.name)) : "-")</td>
 
@@ -406,18 +397,6 @@
                                                 {
                                                     <span class="badge badge-genre" style="font-size:0.65rem;">@g.name</span>
                                                 }
-                                            }
-                                        </div>
-                                    </td>
-
-                                    @* WORTH *@
-                                    <td class="text-center">
-                                        <div class="worth-meter @(game.WorthinessScore > 80 ? "worth-high" : "")">
-                                            <div class="fw-bold">@game.WorthinessScore%</div>
-                                            <div style="font-size: 0.6rem;" class="text-muted">n=@game.total_rating_count</div>
-                                            @if ((game.hypes ?? 0) > 50)
-                                            {
-                                                <i class="bi bi-fire popular-flame" title="High Popularity (Hype)"></i>
                                             }
                                         </div>
                                     </td>
@@ -491,25 +470,6 @@
                                         </div>
                                     </td>
 
-                                    @* START DATE *@
-                                    <td class="px-2">
-                                        <input type="date" class="form-control form-control-sm bg-dark text-light border-secondary"
-                                               value="@(localDatesStarted.GetValueOrDefault(game.id)?.ToString("yyyy-MM-dd"))"
-                                               onchange="updateDate(@game.id, 'start', this.value)" />
-                                    </td>
-
-                                    @* FINISH DATE *@
-                                    <td class="px-2">
-                                        <input type="date" class="form-control form-control-sm bg-dark text-light border-secondary"
-                                               value="@(localDatesFinished.GetValueOrDefault(game.id)?.ToString("yyyy-MM-dd"))"
-                                               onchange="updateDate(@game.id, 'finish', this.value)" />
-                                    </td>
-
-                                    @* PLAY STATUS *@
-                                    <td class="text-center small @statusClass">
-                                        @playStatus.ToUpper()
-                                    </td>
-
                                 </tr>
                             }
                         </tbody>
@@ -539,7 +499,7 @@
                 coverUrl: cover,
                 igdbUrl: url,
                 steamUrl: steam,
-                gogUrl : gog,
+                gogUrl: gog,
                 epicUrl: epic,
                 summary: summary,
                 releaseDate: date,
@@ -554,28 +514,55 @@
                 status: status
             }, function (res) {
                 if (res.success) {
-                    if (status == 2) {
-                        const row = $(`#row_${id}`);
-                        row.addClass('is-hidden-row').css('opacity', '0.3');
-                        if (!$('#showHiddenToggle').is(':checked')) { row.fadeOut(300); }
-                    } else {
-                        location.reload(); 
-                    }
+                    // Success! Update the UI instead of reloading
+                    handleUIUpdate(id, res.newStatus);
+                } else {
+                    alert(res.message || "Error updating status");
                 }
             });
         }
 
-        function toggleHiddenRows() {
-            // 1. Get the True/False state of the switch
-            const isChecked = $('#showHiddenToggle').is(':checked');
+        function quickFinish(id) {
+            $.post('/Games/UpdateDates', {
+                igdbId: id,
+                type: 'finish',
+                date: null
+            }, function (res) {
+                if (res.success) {
+                    // Update UI to Finished state immediately
+                    handleUIUpdate(id, 3);
+                } else {
+                    alert(res.message);
+                }
+            });
+        }
 
-            // 2. Find every row marked as "hidden"
-            const hiddenRows = $('.is-hidden-row');
+        function handleUIUpdate(id, status) {
+            const row = $(`#row_${id}`);
+            const libraryBtn = row.find('.btn-outline-success, .btn-success');
+            const libraryIcon = libraryBtn.find('i');
+            const qfBtn = $(`#qf_${id}`); // Select the Quick Finish button specifically
 
-            if (isChecked) {
-                hiddenRows.removeClass('d-none').fadeIn(200);
-            } else {
-                hiddenRows.addClass('d-none');
+            // Handle Row Gray-out (Visual feedback that game is 'done')
+            if (status === 3) {
+                row.addClass('is-finished');
+                libraryBtn.removeClass('btn-outline-success').addClass('btn-success');
+                libraryIcon.removeClass('bi-plus-circle').addClass('bi-check-circle-fill');
+                qfBtn.fadeOut(200); // Hide the Quick Finish button
+
+            } else if (status === 2) { // Hidden
+                row.addClass('is-hidden-row').css('opacity', '0.3');
+                if (!$('#showHiddenToggle').is(':checked')) { row.fadeOut(300); }
+            } else if (status === 1) { // Interested
+                row.removeClass('is-finished');
+                libraryBtn.removeClass('btn-outline-success').addClass('btn-success');
+                libraryIcon.removeClass('bi-plus-circle').addClass('bi-check-circle-fill');
+                qfBtn.fadeIn(200);
+            } else if (status === 0) { // Archive
+                row.removeClass('is-finished is-hidden-row').css('opacity', '1');
+                libraryBtn.addClass('btn-outline-success').removeClass('btn-success');
+                libraryIcon.addClass('bi-plus-circle').removeClass('bi-check-circle-fill');
+                qfBtn.fadeIn(200);
             }
         }
 
@@ -586,35 +573,15 @@
             });
         }
 
-                function toggleFinishedRows() {
-            const shouldHide = $('#hideFinishedToggle').is(':checked');
-            const finishedRows = $('.is-finished-row');
-
-            if (shouldHide) {
-                finishedRows.addClass('d-none');
+        function toggleHiddenRows() {
+            const isChecked = $('#showHiddenToggle').is(':checked');
+            const hiddenRows = $('.is-hidden-row');
+            if (isChecked) {
+                hiddenRows.removeClass('d-none').fadeIn(200);
             } else {
-                // Only show them if they aren't ALSO "Hidden" (Status 2)
-                finishedRows.each(function() {
-                    if (!$(this).hasClass('is-hidden-row')) {
-                        $(this).removeClass('d-none');
-                    }
-                });
+                hiddenRows.addClass('d-none');
             }
         }
 
-                function updateDate(id, type, dateValue) {
-            $.post('/Games/UpdateDates', {
-                igdbId: id,
-                type: type,
-                date: dateValue
-            }, function (res) {
-                if (res.success) {
-                    location.reload();
-
-                } else {
-                        alert(res.message);
-                }
-            });
-        }
     </script>
 }

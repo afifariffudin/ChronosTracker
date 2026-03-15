@@ -183,13 +183,13 @@
                                 <th class="col-date ps-3 text-center align-middle">RELEASE</th>
                                 <th class="text-center align-middle">COVER</th>
                                 <th class="col-details text-center align-middle">GAME DETAILS</th>
+                                <th class="text-center align-middle" style="width: 100px;">WORTH</th>
                                 <th class="text-center align-middle">DEVELOPER</th>
                                 <th class="text-center align-middle">GENRES</th>
                                 <th class="text-center align-middle">PARENT GAME</th>
                                 <th class="text-center align-middle">SERIES</th>
                                 <th class="text-center align-middle">FRANCHISE</th>
                                 <th class="text-center align-middle">PLATFORMS</th>
-                                <th class="text-center align-middle" style="width: 100px;">WORTH</th>
                                 <th class="text-center align-middle" style="width:150px;">START</th>
                                 <th class="text-center align-middle" style="width:150px;">FINISH</th>
                                 <th class="text-center align-middle" style="width:120px;">PLAY STATUS</th>
@@ -199,10 +199,11 @@
                             @foreach (var game in Model)
                             {
                                 // 1. Logic for Play Status badges
+                                var isFinished = game.Status == 3 || (game.DateStarted.HasValue && game.DateFinished.HasValue);
                                 var playStatus = "Shelf";
                                 var statusClass = "text-muted opacity-50";
 
-                                if (game.DateStarted.HasValue && game.DateFinished.HasValue)
+                                if (isFinished)
                                 {
                                     playStatus = "Finished";
                                     statusClass = "text-success fw-bold";
@@ -222,7 +223,7 @@
                                 var safeParent = HttpUtility.JavaScriptStringEncode(game.ParentGameTitle ?? "");
 
                                 <tr id="row_@game.IGDBId"
-                                    class="@(game.Status == 2 ? "d-none is-hidden-row" : "") @(playStatus == "Finished" ? "is-finished-row" : "")"
+                                    class="@(game.Status == 2 ? "d-none is-hidden-row" : "") @(isFinished ? "is-finished-row is-finished" : "")"
                                     style="@(game.Status == 2 ? "opacity: 0.3;" : "")">
 
                                     @* ACTION *@
@@ -275,6 +276,13 @@
                                             </div>
                                         </div>
                                         <div class="game-summary-scroll">@game.Summary</div>
+                                    </td>
+
+                                    @* WORTH *@
+                                    <td class="text-center">
+                                        <div class="worth-meter @(game.WorthinessScore > 80 ? "worth-high" : "")">
+                                            <div class="fw-bold">@game.WorthinessScore%</div>
+                                        </div>
                                     </td>
 
                                     @* DEVELOPER *@
@@ -332,13 +340,6 @@
                                         }
                                     </td>
 
-                                    @* WORTH *@
-                                    <td class="text-center">
-                                        <div class="worth-meter @(game.WorthinessScore > 80 ? "worth-high" : "")">
-                                            <div class="fw-bold">@game.WorthinessScore%</div>
-                                        </div>
-                                    </td>
-
                                     @* START DATE *@
                                     <td>
                                         <input type="date" class="form-control form-control-sm bg-dark text-light border-secondary"
@@ -348,9 +349,20 @@
 
                                     @* FINISH DATE *@
                                     <td>
+                                        <div class="d-flex align-items-center gap-2">
                                         <input type="date" class="form-control form-control-sm bg-dark text-light border-secondary"
                                                value="@(game.DateFinished?.ToString("yyyy-MM-dd"))"
                                                onchange="updateDate(@game.IGDBId, 'finish', this.value)" />
+
+                                        @if (!isFinished)
+                                        {
+                                            <button class="btn btn-sm btn-outline-success border-secondary"
+                                                    title="Finish (Date Unknown)"
+                                                    onclick="quickFinish(@game.IGDBId)">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
+                                        }
+                                        </div>
                                     </td>
 
                                     @* PLAY STATUS *@
@@ -416,5 +428,20 @@
                     $('.is-finished-row').toggleClass('d-none', shouldHide);
                 }
 
+        function quickFinish(id) {
+            if (confirm("Mark this game as Finished (Date Unknown)?")) {
+                $.post('/Games/UpdateDates', {
+                    igdbId: id,
+                    type: 'finish',
+                    date: null
+                }, function (res) {
+                    if (res.success) {
+                        location.reload(); // Or update the UI dynamically
+                    } else {
+                        alert(res.message);
+                    }
+                });
+            }
+        }
     </script>
 }

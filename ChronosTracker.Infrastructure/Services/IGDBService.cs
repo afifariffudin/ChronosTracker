@@ -92,9 +92,8 @@ public class IGDBService
 
     private string BuildWhereClause(List<int> platformIds, string searchTerm, long? lastTimestamp = null, bool onlyEnglish = true)
     {
-        //long startTimestamp = lastTimestamp ?? 0;
         long startTimestamp = !string.IsNullOrEmpty(searchTerm) ? 0 : (lastTimestamp ?? 0);
-        string where = $"where first_release_date >= {startTimestamp} & first_release_date != null";
+        string where = $"where first_release_date >= {startTimestamp} & first_release_date != null & id != null";
 
         //if (onlyEnglish)
         //{

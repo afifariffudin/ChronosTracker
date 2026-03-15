@@ -1,5 +1,6 @@
 ﻿using ChronosTracker.Core.Entities;
 using ChronosTracker.Infrastructure.Data;
+using ChronosTracker.Infrastructure.Models;
 using ChronosTracker.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis;
@@ -44,20 +45,37 @@ public class GamesController : Controller
                 .Cast<int>()
                 .ToListAsync();
 
-            // 3. Fetch a "Big Bucket" (250) from IGDB starting from lastTimestamp
-            // We fetch more than we need so we have enough leftovers after filtering
-            var bigBatch = await _igdbService.GetBrowseGamesAsync(500, platformIds, searchTerm, lastTimestamp);
+            // 3. THE LOOK-AHEAD LOOP
+            // We will keep fetching batches until we find at least 10 games OR hit a retry limit
+            List<IGDBGame> finalResults = new List<IGDBGame>();
+            long? currentTimestamp = lastTimestamp;
+            int safetyRetry = 0;
 
-            // 4. Filter the Big Batch in memory against your local database
-            var filteredGames = bigBatch
-                .Where(g => !interactedIds.Contains(g.id))
-                .Take(50) // Now we "fill" the page to exactly 50
-                .ToList();
+            while (finalResults.Count < 20 && safetyRetry < 5) // Stop after 5 empty batches to avoid API spam
+            {
+                var bigBatch = await _igdbService.GetBrowseGamesAsync(250, platformIds, searchTerm, currentTimestamp);
+
+                if (bigBatch == null || !bigBatch.Any()) break;
+
+                // Filter out what we've already seen
+                var filteredBatch = bigBatch.Where(g => !interactedIds.Contains(g.id)).ToList();
+                finalResults.AddRange(filteredBatch);
+
+                // Update timestamp for the next batch if this one didn't fill the page
+                currentTimestamp = bigBatch.LastOrDefault()?.first_release_date;
+
+                // If we are searching for a specific term, don't loop (API handles search better)
+                if (!string.IsNullOrEmpty(searchTerm)) break;
+
+                // If we found games, we can probably stop; if not, retry
+                if (finalResults.Count >= 20) break;
+                safetyRetry++;
+            }
 
             var platforms = await _igdbService.GetPlatformsAsync();
 
             // 5. Match IGDB results against local DB (for status badges/dates)
-            var igdbIdsInPage = filteredGames.Select(g => g.id).ToList();
+            var igdbIdsInPage = finalResults.Select(g => g.id).ToList();
             var localGames = await _context.Games
                 .Where(g => g.IGDBId.HasValue && igdbIdsInPage.Contains(g.IGDBId.Value))
                 .ToListAsync();
@@ -77,9 +95,9 @@ public class GamesController : Controller
             ViewBag.MinDate = lastTimestamp; // Tracks where we started
 
             // This is the most important part for your "Next" button:
-            ViewBag.NextTimestamp = filteredGames.LastOrDefault()?.first_release_date;
+            ViewBag.NextTimestamp = finalResults.LastOrDefault()?.first_release_date;
 
-            return View(filteredGames);
+            return View(finalResults);
         }
         catch (Exception ex)
         {
@@ -91,7 +109,7 @@ public class GamesController : Controller
     {
         // This is like a 'Filtered View' of your local tracker sheet
         var myLibrary = await _context.Games
-            .Where(g => g.Status == 1)
+            .Where(g => g.Status == 1 || g.Status == 3)
             .OrderBy(g => g.ReleaseDate)
             .ThenBy(g => g.Title)
             .ToListAsync();
@@ -222,8 +240,16 @@ public class GamesController : Controller
             }
         }
 
+        if (status == 3)
+        {
+            // If it's a new finish or a status change to finished, 
+            // and no date exists yet, mark it as 'Date Unknown' (null or current)
+            // or just leave the date as is if it was already set.
+            game.Status = 3;
+        }
+
         await _context.SaveChangesAsync();
-        return Json(new { success = true, newStatus = status });
+        return Json(new { success = true, newStatus = game.Status });
     }
 
     [HttpPost]
@@ -232,11 +258,18 @@ public class GamesController : Controller
         var game = await _context.Games.FirstOrDefaultAsync(g => g.IGDBId == igdbId);
         if (game != null)
         {
-            if (type == "start") game.DateStarted = date;
-            if (type == "finish") game.DateFinished = date;
+            if (type == "start")
+            {
+                game.DateStarted = date;
+            }
+            else if (type == "finish")
+            {
+                game.DateFinished = date;
+                game.Status = 3;
+            }
 
             await _context.SaveChangesAsync();
-            return Json(new { success = true });
+            return Json(new { success = true, newStatus = game.Status });
         }
         return Json(new { success = false, message = "Save the game as 'Interested' first!" });
     }
