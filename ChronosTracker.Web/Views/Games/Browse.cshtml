@@ -292,17 +292,11 @@
 
                                     <div id="actions_@game.id" class="btn-group btn-group-sm">
                                         @* Add/Library Button (Status 1) *@
-                                        <button class="btn @(s == 1 || s == 3 ? "btn-success" : "btn-outline-success")" 
+                                        <button class="btn @(s == 1 || s == 3 ? "btn-success" : "btn-outline-success")" title="Add to Library"
                                                 onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', 1)">
                                             <i class="bi @(s == 1 || s == 3 ? "bi-check-circle-fill" : "bi-plus-circle")"></i>
                                         </button>
-
-                                        @* Hide Button (Status 2) *@
-                                        <button class="btn btn-outline-danger"
-                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', 2)">
-                                            <i class="bi bi-eye-slash"></i>
-                                        </button>
-
+                                        
                                         @* Quick Finish Button (Status 3) *@
                                         @if (!isFinished)
                                         {
@@ -310,6 +304,13 @@
                                                 <i class="bi bi-check-all"></i>
                                             </button>
                                         }
+
+                                        @* Hide Button (Status 2) *@
+                                        <button class="btn btn-outline-danger" title="Hide Game"
+                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', 2)">
+                                            <i class="bi bi-eye-slash"></i>
+                                        </button>
+
                                     </div>
                                 </td>
 
