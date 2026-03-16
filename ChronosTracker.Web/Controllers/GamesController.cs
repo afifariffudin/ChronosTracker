@@ -49,26 +49,30 @@ public class GamesController : Controller
             // We will keep fetching batches until we find at least 10 games OR hit a retry limit
             List<IGDBGame> finalResults = new List<IGDBGame>();
             long? currentTimestamp = lastTimestamp;
+            long? lastKnownApiTimestamp = lastTimestamp;
             int safetyRetry = 0;
 
-            while (finalResults.Count < 20 && safetyRetry < 5) // Stop after 5 empty batches to avoid API spam
+            while (finalResults.Count < 50 && safetyRetry < 10) // Stop after 5 empty batches to avoid API spam
             {
                 var bigBatch = await _igdbService.GetBrowseGamesAsync(250, platformIds, searchTerm, currentTimestamp);
 
                 if (bigBatch == null || !bigBatch.Any()) break;
 
+                // Track the absolute last release date the API gave us
+                lastKnownApiTimestamp = bigBatch.Last().first_release_date;
+
                 // Filter out what we've already seen
                 var filteredBatch = bigBatch.Where(g => !interactedIds.Contains(g.id)).ToList();
                 finalResults.AddRange(filteredBatch);
 
-                // Update timestamp for the next batch if this one didn't fill the page
-                currentTimestamp = bigBatch.LastOrDefault()?.first_release_date;
+                // Update currentTimestamp for the NEXT API call in the loop
+                currentTimestamp = lastKnownApiTimestamp;
 
                 // If we are searching for a specific term, don't loop (API handles search better)
                 if (!string.IsNullOrEmpty(searchTerm)) break;
 
                 // If we found games, we can probably stop; if not, retry
-                if (finalResults.Count >= 20) break;
+                if (finalResults.Count >= 50) break;
                 safetyRetry++;
             }
 
@@ -95,7 +99,9 @@ public class GamesController : Controller
             ViewBag.MinDate = lastTimestamp; // Tracks where we started
 
             // This is the most important part for your "Next" button:
-            ViewBag.NextTimestamp = finalResults.LastOrDefault()?.first_release_date;
+            ViewBag.NextTimestamp = finalResults.Any()
+                ? finalResults.Last().first_release_date
+                : currentTimestamp;
 
             return View(finalResults);
         }

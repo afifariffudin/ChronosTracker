@@ -2,6 +2,10 @@
 @using System.Web
 @model List<IGDBGame>
 
+<div class="alert alert-info">
+    DEBUG: Model Count = @(Model?.Count ?? -1) | URL = @Context.Request.Path
+</div>
+
 @{
     ViewData["Title"] = "Global Game Archive";
     var platforms = ViewBag.Platforms as List<IGDBNestedItem> ?? new List<IGDBNestedItem>();
