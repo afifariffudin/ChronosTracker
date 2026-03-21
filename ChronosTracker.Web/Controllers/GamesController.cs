@@ -19,7 +19,7 @@ public class GamesController : Controller
         _igdbService = igdbService;
     }
 
-    public async Task<IActionResult> Browse(long? lastTimestamp = null, List<int> platformIds = null, string searchTerm = null)
+    public async Task<IActionResult> Browse(long? lastTimestamp = null, List<int> platformIds = null, string searchTerm = null, bool onlySteam = false)
     {
         try
         {
@@ -54,7 +54,7 @@ public class GamesController : Controller
 
             while (finalResults.Count < 50 && safetyRetry < 10) // Stop after 5 empty batches to avoid API spam
             {
-                var bigBatch = await _igdbService.GetBrowseGamesAsync(250, platformIds, searchTerm, currentTimestamp);
+                var bigBatch = await _igdbService.GetBrowseGamesAsync(250, platformIds, searchTerm, currentTimestamp, true, onlySteam);
 
                 if (bigBatch == null || !bigBatch.Any()) break;
 
@@ -95,6 +95,7 @@ public class GamesController : Controller
             ViewBag.LocalStatuses = localStatuses;
             ViewBag.LocalDatesStarted = localDatesStarted;
             ViewBag.LocalDatesFinished = localDatesFinished;
+            ViewBag.OnlySteam = onlySteam;
             ViewBag.SearchTerm = searchTerm;
             ViewBag.MinDate = lastTimestamp; // Tracks where we started
 
@@ -243,16 +244,14 @@ public class GamesController : Controller
                 game.WorthinessScore = worthinessScore;
                 game.SupportsEnglish = supportsEnglish;
 
+                if (status == 3)
+                {
+                    game.Status = 3;
+                }
             }
         }
 
-        if (status == 3)
-        {
-            // If it's a new finish or a status change to finished, 
-            // and no date exists yet, mark it as 'Date Unknown' (null or current)
-            // or just leave the date as is if it was already set.
-            game.Status = 3;
-        }
+
 
         await _context.SaveChangesAsync();
         return Json(new { success = true, newStatus = game.Status });

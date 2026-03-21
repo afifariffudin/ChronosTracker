@@ -35,7 +35,7 @@ public class IGDBService
         return _accessToken;
     }
 
-    public async Task<List<IGDBGame>> GetBrowseGamesAsync(int limit = 250, List<int> platformIds = null, string searchTerm = null, long? lastTimestamp = null, bool onlyEnglish = true)
+    public async Task<List<IGDBGame>> GetBrowseGamesAsync(int limit = 250, List<int> platformIds = null, string searchTerm = null, long? lastTimestamp = null, bool onlyEnglish = true, bool onlySteam = false)
     {
         var token = await GetAccessTokenAsync();
         var clientId = _config["IGDB:ClientId"];
@@ -52,7 +52,7 @@ public class IGDBService
                            "external_games.external_game_source, external_games.uid, external_games.url, " +
                            "language_supports.language, language_supports.language_support_type";
 
-        string whereClause = BuildWhereClause(platformIds, searchTerm, lastTimestamp, onlyEnglish);
+        string whereClause = BuildWhereClause(platformIds, searchTerm, lastTimestamp, onlyEnglish, onlySteam);
 
         string body = $"{fieldList}; {whereClause}; sort first_release_date asc; limit {limit};";
 
@@ -90,19 +90,15 @@ public class IGDBService
         return result?.count ?? 0;
     }
 
-    private string BuildWhereClause(List<int> platformIds, string searchTerm, long? lastTimestamp = null, bool onlyEnglish = true)
+    private string BuildWhereClause(List<int> platformIds, string searchTerm, long? lastTimestamp = null, bool onlyEnglish = true, bool onlySteam = false)
     {
         long startTimestamp = !string.IsNullOrEmpty(searchTerm) ? 0 : (lastTimestamp ?? 0);
         string where = $"where first_release_date >= {startTimestamp} & first_release_date != null & id != null";
 
-        //if (onlyEnglish)
-        //{
-        //    where += " & (" +
-        //                     "(language_supports.language = 12 & language_supports.language_support_type = 3) | " +
-        //                     "(language_supports.language = 12 & language_supports.language_support_type = 2) | " +
-        //                     "language_supports = null" +
-        //                     ")";
-        //}
+        if (onlySteam)
+        {
+            where += " & external_games.external_game_source = 1"; // 1 = Steam
+        }
 
         if (!string.IsNullOrEmpty(searchTerm))
         {
