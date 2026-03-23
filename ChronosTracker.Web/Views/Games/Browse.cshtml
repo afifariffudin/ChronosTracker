@@ -2,8 +2,27 @@
 @using System.Web
 @model List<IGDBGame>
 
-<div class="alert alert-info">
-    DEBUG: Model Count = @(Model?.Count ?? -1) | URL = @Context.Request.Path
+@* Debug Bar *@
+<div class="alert alert-dark border-secondary shadow-sm py-2 px-3 mb-3" style="font-family: monospace; font-size: 0.8rem;">
+    <div class="d-flex flex-wrap gap-4">
+        <div>
+            <span class="text-info fw-bold">COUNT:</span> @(Model?.Count ?? -1)
+        </div>
+        <div>
+            <span class="text-warning fw-bold">PATH:</span> @Context.Request.Path
+        </div>
+        <div>
+            <span class="text-success fw-bold">START TS:</span> @(ViewBag.MinDate ?? "NULL (1970)") 
+            <small class="text-muted">(@(ViewBag.MinDate != null ? DateTimeOffset.FromUnixTimeSeconds((long)ViewBag.MinDate).ToString("yyyy-MM-dd") : "N/A"))</small>
+        </div>
+        <div>
+            <span class="text-danger fw-bold">NEXT TS:</span> @(ViewBag.NextTimestamp ?? "NULL")
+            <small class="text-muted">(@(ViewBag.NextTimestamp != null ? DateTimeOffset.FromUnixTimeSeconds((long)ViewBag.NextTimestamp).ToString("yyyy-MM-dd") : "N/A"))</small>
+        </div>
+        <div>
+            <span class="text-purple fw-bold" style="color:var(--accent-purple)">STEAM:</span> @(ViewBag.OnlySteam == true ? "ON" : "OFF")
+        </div>
+    </div>
 </div>
 
 @{
@@ -500,7 +519,7 @@
                     @if (!Model.Any())
                     {
                         <div class="text-center py-5 bg-dark rounded border border-secondary m-4">
-                            <i class="bi bi-steam text-muted" style="font-size: 3rem;"></i>
+                            @* <i class="bi bi-steam text-muted" style="font-size: 3rem;"></i> *@
                             <h4 class="mt-3 text-light">No Games Found</h4>
                             <p class="text-muted">There are no games matching your criteria in this era.</p>
 

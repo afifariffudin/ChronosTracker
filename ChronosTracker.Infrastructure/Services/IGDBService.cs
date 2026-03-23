@@ -130,4 +130,33 @@ public class IGDBService
 
         return JsonConvert.DeserializeObject<List<IGDBNestedItem>>(jsonResponse) ?? new List<IGDBNestedItem>();
     }
+
+    public async Task<long?> GetSmartStartTimestampAsync(List<int> platformIds, bool onlySteam)
+    {
+        var token = await GetAccessTokenAsync();
+        var clientId = _config["IGDB:ClientId"];
+
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Add("Client-ID", clientId);
+        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+        // Min date 315532800 (Jan 1, 1980)
+        string where = "where first_release_date > 315532800 & first_release_date != null & platforms != null";
+
+        if (platformIds != null && platformIds.Any())
+            where += $" & platforms = ({string.Join(",", platformIds)})";
+
+        if (onlySteam)
+            where += " & external_games.category = 1";
+
+        // We only want the EARLIEST date (sort asc) and only 1 record
+        string body = $"fields first_release_date; {where}; sort first_release_date asc; limit 1;";
+
+        var content = new StringContent(body, Encoding.UTF8, "text/plain");
+        var response = await _httpClient.PostAsync("https://api.igdb.com/v4/games", content);
+        var json = await response.Content.ReadAsStringAsync();
+
+        var games = JsonConvert.DeserializeObject<List<IGDBGame>>(json);
+        return games?.FirstOrDefault()?.first_release_date;
+    }
 }

@@ -36,6 +36,19 @@ public class GamesController : Controller
                 }
             }
 
+            if (lastTimestamp == null && string.IsNullOrEmpty(searchTerm))
+            {
+                // Ask the service for the earliest date across ALL selected platforms
+                var smartStart = await _igdbService.GetSmartStartTimestampAsync(platformIds, onlySteam);
+
+                // If we found a date, use it as our starting point. 
+                // We subtract 1 so the 'where date >= X' logic includes that first game.
+                if (smartStart.HasValue)
+                {
+                    lastTimestamp = smartStart.Value - 1;
+                }
+            }
+
             // 2. Get ALL IDs from your local DB to exclude (Hidden, Interested, etc.)
             // This is key to ensuring the API doesn't return things you've already processed
             var interactedIds = await _context.Games
@@ -52,7 +65,7 @@ public class GamesController : Controller
             long? lastKnownApiTimestamp = lastTimestamp;
             int safetyRetry = 0;
 
-            while (finalResults.Count < 50 && safetyRetry < 10) // Stop after 5 empty batches to avoid API spam
+            while (finalResults.Count < 50 && safetyRetry < 20)
             {
                 var bigBatch = await _igdbService.GetBrowseGamesAsync(250, platformIds, searchTerm, currentTimestamp, true, onlySteam);
 
@@ -66,7 +79,7 @@ public class GamesController : Controller
                 finalResults.AddRange(filteredBatch);
 
                 // Update currentTimestamp for the NEXT API call in the loop
-                currentTimestamp = lastKnownApiTimestamp;
+                currentTimestamp = lastKnownApiTimestamp + 1;
 
                 // If we are searching for a specific term, don't loop (API handles search better)
                 if (!string.IsNullOrEmpty(searchTerm)) break;
@@ -97,12 +110,15 @@ public class GamesController : Controller
             ViewBag.LocalDatesFinished = localDatesFinished;
             ViewBag.OnlySteam = onlySteam;
             ViewBag.SearchTerm = searchTerm;
-            ViewBag.MinDate = lastTimestamp; // Tracks where we started
 
             // This is the most important part for your "Next" button:
             ViewBag.NextTimestamp = finalResults.Any()
-                ? finalResults.Last().first_release_date
+                ? finalResults.Last().first_release_date + 1
                 : currentTimestamp;
+
+            finalResults = finalResults.DistinctBy(g => g.id).ToList();
+            
+            ViewBag.MinDate = lastTimestamp; // Tracks where we started
 
             return View(finalResults);
         }
