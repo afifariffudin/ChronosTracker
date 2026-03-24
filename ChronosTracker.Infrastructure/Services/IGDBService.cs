@@ -1,5 +1,8 @@
-﻿using ChronosTracker.Infrastructure.Models;
+﻿using ChronosTracker.Infrastructure.Data;
+using ChronosTracker.Infrastructure.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using System.Text;
 
@@ -9,12 +12,14 @@ public class IGDBService
 {
     private readonly IConfiguration _config;
     private readonly HttpClient _httpClient;
+    private readonly IServiceProvider _serviceProvider;
     private string _accessToken;
 
-    public IGDBService(IConfiguration config, HttpClient httpClient)
+    public IGDBService(IConfiguration config, HttpClient httpClient, IServiceProvider serviceProvider)
     {
         _config = config;
         _httpClient = httpClient;
+        _serviceProvider = serviceProvider;
     }
 
     public async Task<string> GetAccessTokenAsync()
@@ -147,7 +152,7 @@ public class IGDBService
             where += $" & platforms = ({string.Join(",", platformIds)})";
 
         if (onlySteam)
-            where += " & external_games.category = 1";
+            where += " & external_games.external_game_source = 1";
 
         // We only want the EARLIEST date (sort asc) and only 1 record
         string body = $"fields first_release_date; {where}; sort first_release_date asc; limit 1;";
@@ -158,5 +163,59 @@ public class IGDBService
 
         var games = JsonConvert.DeserializeObject<List<IGDBGame>>(json);
         return games?.FirstOrDefault()?.first_release_date;
+    }
+
+    public async Task HydrateSteamRatingsAsync(IGDBGame game)
+    {
+        // 1. Get the App ID from the URL (e.g., /app/12345/)
+        if (string.IsNullOrEmpty(game.SteamAppId)) return;
+
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var localCache = await context.Games.FirstOrDefaultAsync(g => g.IGDBId == game.id);
+
+            if (localCache != null && localCache.LastMetadataUpdate > DateTime.UtcNow.AddHours(-24) && localCache.SteamTotalReviews > 0)
+            {
+                game.steam_total_reviews = localCache.SteamTotalReviews ?? 0;
+                game.steam_positive_reviews = localCache.SteamPositiveReviews ?? 0;
+                return;
+            }
+
+            // We use a Regex to pull the numbers out of the Steam URL
+            var match = System.Text.RegularExpressions.Regex.Match(game.SteamAppId, @"app/(\d+)");
+            if (!match.Success) return;
+
+            string appId = match.Groups[1].Value;
+
+            // Steam's public "Internal" API for review summaries
+            string url = $"https://store.steampowered.com/appreviews/{appId}?json=1&language=all&purchase_type=all&num_per_page=0";
+
+            try
+            {
+                var response = await _httpClient.GetStringAsync(url);
+                dynamic data = JsonConvert.DeserializeObject(response);
+
+                if (data != null && data.query_summary != null)
+                {
+                    // Fill the properties you just added to IGDBGame.cs
+                    game.steam_total_reviews = data.query_summary.total_reviews;
+                    game.steam_positive_reviews = data.query_summary.total_positive;
+
+                    if (localCache != null)
+                    {
+                        localCache.SteamTotalReviews = game.steam_total_reviews;
+                        localCache.SteamPositiveReviews = game.steam_positive_reviews;
+                        localCache.LastMetadataUpdate = DateTime.UtcNow;
+
+                        await context.SaveChangesAsync();
+                    }
+                }
+            }
+            catch
+            {
+                // If Steam is down or the ID is invalid, it stays 0 and falls back to IGDB
+            }
+        }
     }
 }

@@ -20,6 +20,8 @@ public class IGDBGame
     public double? total_rating { get; set; }
     public int? total_rating_count { get; set; }
     public int? hypes { get; set; }
+    public int steam_positive_reviews { get; set; }
+    public int steam_total_reviews { get; set; }
 
     public class IGDBLanguageSupport
     {
@@ -67,15 +69,29 @@ public class IGDBGame
     {
         get
         {
-            if (!total_rating.HasValue || (total_rating_count ?? 0) == 0)
+            double rawScore;
+            int count;
+
+            if (steam_total_reviews > 0)
+            {
+                rawScore = (double)steam_positive_reviews / steam_total_reviews;
+                count = steam_total_reviews;
+            }
+
+            else if (total_rating.HasValue && (total_rating_count ?? 0) > 0)
+            {
+                rawScore = total_rating.Value / 100.0;
+                count = total_rating_count.Value;
+            }
+
+            else
+            {
                 return 50.0;
+            }
 
-            double rawScore = total_rating.Value / 100.0;
-            int count = total_rating_count.Value;
+            double dampened = rawScore - (rawScore - 0.5) * Math.Pow(2, -Math.Log10(count + 1));
 
-            double score = rawScore - (rawScore - 0.5) * Math.Pow(2, -Math.Log10(count + 1));
-
-            return Math.Round(score * 100, 1);
+            return Math.Round(dampened * 100, 1);
         }
     }
 

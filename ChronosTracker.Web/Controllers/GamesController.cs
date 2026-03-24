@@ -89,6 +89,14 @@ public class GamesController : Controller
                 safetyRetry++;
             }
 
+            var steamTasks = finalResults
+            .Where(g => !string.IsNullOrEmpty(g.SteamAppId))
+            .Select(game => _igdbService.HydrateSteamRatingsAsync(game));
+
+            await Task.WhenAll(steamTasks);
+
+            await _context.SaveChangesAsync();
+
             var platforms = await _igdbService.GetPlatformsAsync();
 
             // 5. Match IGDB results against local DB (for status badges/dates)
@@ -197,6 +205,8 @@ public class GamesController : Controller
         bool supportsEnglish,
         // Ratings
         double? worthinessScore,
+        int? steamPositiveReviews,
+        int? steamTotalReviews,
         // User Tracking
         int status)
 
@@ -224,6 +234,9 @@ public class GamesController : Controller
                 FranchiseName = franchiseName,
                 ParentGameTitle = parentGameTitle,
                 WorthinessScore = worthinessScore,
+                SteamPositiveReviews = steamPositiveReviews,
+                SteamTotalReviews = steamTotalReviews,
+                LastMetadataUpdate = DateTime.UtcNow,
                 SupportsEnglish = supportsEnglish,
                 Status = status,
                 DateCreated = DateTime.UtcNow
@@ -258,6 +271,9 @@ public class GamesController : Controller
                 game.FranchiseName = franchiseName;
                 game.ParentGameTitle = parentGameTitle;
                 game.WorthinessScore = worthinessScore;
+                game.SteamPositiveReviews = steamPositiveReviews;
+                game.SteamTotalReviews = steamTotalReviews;
+                game.LastMetadataUpdate = DateTime.UtcNow;
                 game.SupportsEnglish = supportsEnglish;
 
                 if (status == 3)

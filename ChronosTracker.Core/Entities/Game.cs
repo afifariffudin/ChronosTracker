@@ -28,6 +28,9 @@
 
         // Ratings
         public double? WorthinessScore { get; set; }
+        public int? SteamPositiveReviews { get; set; }
+        public int? SteamTotalReviews { get; set; }
+        public DateTime? LastMetadataUpdate { get; set; } // When did we last ask Steam?
 
         // User Tracking
         public int Status { get; set; } = 0; // 0: Archive, 1: Library, 2: Hidden

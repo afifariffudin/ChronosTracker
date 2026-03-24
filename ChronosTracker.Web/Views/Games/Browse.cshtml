@@ -179,6 +179,12 @@
         filter: drop-shadow(0 0 2px rgba(255,95,0,0.5));
     }
 
+    .hover-youtube:hover {
+    color: #ff0000 !important;
+    filter: drop-shadow(0 0 5px rgba(255, 0, 0, 0.5));
+    opacity: 1 !important;
+    }   
+
 </style>
 
         <div class="container-fluid px-4 mt-2">
@@ -333,7 +339,7 @@
                                     <div id="actions_@game.id" class="btn-group btn-group-sm">
                                         @* Add/Library Button (Status 1) *@
                                         <button class="btn @(s == 1 || s == 3 ? "btn-success" : "btn-outline-success")" title="Add to Library"
-                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', 1)">
+                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', @game.steam_positive_reviews, @game.steam_total_reviews, 1)">
                                             <i class="bi @(s == 1 || s == 3 ? "bi-check-circle-fill" : "bi-plus-circle")"></i>
                                         </button>
                                         
@@ -347,7 +353,7 @@
 
                                         @* Hide Button (Status 2) *@
                                         <button class="btn btn-outline-danger" title="Hide Game"
-                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', 2)">
+                                                onclick="updateStatus(@game.id, '@safeTitle', '@game.slug', '@cover', '@game.url', '@safeSummary', '@game.ReleaseDate?.ToString("yyyy-MM-dd")', '@safeDeveloper', '@safeGenres', '@safePlatforms', '@safeSeries', '@safeFranchise', '@safeParent', @game.WorthinessScore, @game.SupportsEnglish.ToString().ToLower(), '@game.SteamAppId', '@game.GOGId', '@game.EpicGamesId', @game.steam_positive_reviews, @game.steam_total_reviews, 2)">
                                             <i class="bi bi-eye-slash"></i>
                                         </button>
 
@@ -396,6 +402,14 @@
                                                         <i class="fa-solid fa-e" style="font-size: 1.1rem;border: 1px solid white; padding: 1px 4px; border-radius: 4px; line-height: 1;"></i>
                                                     </a>
                                                 }
+
+                                                @* NEW: YOUTUBE SEARCH *@
+                                                <a href="https://www.youtube.com/results?search_query=@(Uri.EscapeDataString(game.name + " gameplay"))" 
+                                                   target="_blank" 
+                                                   class="text-danger opacity-75 hover-youtube" 
+                                                   title="Search Gameplay on YouTube">
+                                                    <i class="bi bi-youtube" style="font-size: 1.2rem;"></i>
+                                                </a>
                                             </div>
                                         </div>
 
@@ -416,9 +430,23 @@
 
                                     @* WORTH *@
                                     <td class="text-center">
-                                        <div class="worth-meter @(game.WorthinessScore > 80 ? "worth-high" : "")">
-                                            <div class="fw-bold">@game.WorthinessScore%</div>
-                                            <div style="font-size: 0.6rem;" class="text-muted">n=@game.total_rating_count</div>
+                                        @{
+                                            // Determine which 'count' to show in the UI to match your Controller logic
+                                            var displayCount = game.steam_total_reviews > 0 
+                                                ? game.steam_total_reviews 
+                                                : (game.total_rating_count ?? 0);
+        
+                                            var isSteamData = game.steam_total_reviews > 0;
+                                        }
+                                        <div class="worth-meter @(game.WorthinessScore >= 80 ? "worth-high" : "")" 
+                                             title="@(isSteamData ? "Based on Steam Reviews" : "Based on IGDB Ratings")">
+                                            <div class="fw-bold @(game.WorthinessScore >= 85 ? "text-success" : game.WorthinessScore <= 40 ? "text-danger" : "")">
+                                                @game.WorthinessScore%
+                                            </div>
+                                            <div style="font-size: 0.6rem;" class="text-muted">
+                                                @if(isSteamData) { <i class="fa-brands fa-steam small"></i> }
+                                                n=@displayCount
+                                            </div>
                                             @if ((game.hypes ?? 0) > 50)
                                             {
                                                 <i class="bi bi-fire popular-flame" title="High Popularity (Hype)"></i>
@@ -556,7 +584,7 @@
             sidebar.addEventListener('hidden.bs.collapse', () => localStorage.setItem('sidebarState', 'closed'));
         });
 
-        function updateStatus(id, title, slug, cover, url, summary, date, developer, genres, platforms, series, franchise, parent, score, supportsEnglish, steam, gog, epic, status) {
+        function updateStatus(id, title, slug, cover, url, summary, date, developer, genres, platforms, series, franchise, parent, score, supportsEnglish, steam, gog, epic, steamPos, steamTotal, status) {
             $.post('/Games/UpdateStatus', {
                 igdbId: id,
                 title: title,
@@ -576,6 +604,8 @@
                 parentGameTitle: parent,
                 supportsEnglish: supportsEnglish,
                 worthinessScore: score,
+                steamPositiveReviews: steamPos,
+                steamTotalReviews: steamTotal,
                 status: status
             }, function (res) {
                 if (res.success) {
